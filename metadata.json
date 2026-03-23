@@ -1,0 +1,5 @@
+{
+  "name": "Shock Absorber Simulation System",
+  "description": "A high-precision simulation and decision support system for shock absorber pull-out force analysis using Monte Carlo methods and physical modeling.",
+  "requestFramePermissions": []
+}
