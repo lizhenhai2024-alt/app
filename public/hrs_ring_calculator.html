@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HRS Ring 液压缓冲计算校核 v3</title>
+  <style>
+    :root{
+      --bg:#f0f4fa;--card:#ffffff;--text:#172033;--muted:#667085;
+      --blue:#2457c5;--blue-lt:#e8f0fd;--green:#0f766e;--red:#b91c1c;
+      --input:#fffbe6;--auto:#e8f1ff;--adv:#f3e8ff;
+      --border:#dde3f0;--shadow:0 4px 18px rgba(16,24,40,.07);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Microsoft YaHei",Arial,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+
+    header{padding:14px 24px 12px;background:linear-gradient(135deg,#101828 0%,#1e3a8a 60%,#2457c5 100%);color:#fff}
+    header h1{font-size:20px;font-weight:700;letter-spacing:.3px;margin-bottom:3px}
+    header p{font-size:11.5px;opacity:.82;max-width:960px}
+
+    main{max-width:1660px;margin:0 auto;padding:14px 16px}
+    .layout{display:grid;grid-template-columns:410px 1fr;gap:14px;align-items:start}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:13px 14px;margin-bottom:12px}
+    .card:last-child{margin-bottom:0}
+    .card-title{font-size:13.5px;font-weight:700;color:var(--blue);border-left:3px solid var(--blue);padding-left:9px;margin-bottom:10px;letter-spacing:.2px}
+
+    .row{display:grid;grid-template-columns:1fr 110px;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid #f0f3f8}
+    .row:last-child{border-bottom:none}
+    .row label{color:#374151;line-height:1.3;padding-right:4px}
+    input,select{width:100%;height:28px;border:1px solid #cbd5e1;border-radius:6px;padding:2px 7px;font-size:12.5px;font-weight:600;color:#111827;background:#fff;transition:border-color .15s}
+    input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(36,87,197,.12)}
+    input.user{background:var(--input)}
+    input.auto{background:var(--auto);color:#1d4ed8}
+    input.adv{background:var(--adv)}
+    input[readonly]{border-color:#c8d9fa;cursor:default}
+
+    .btn{width:100%;border:0;border-radius:8px;background:var(--blue);color:#fff;padding:9px 12px;font-weight:700;font-size:13.5px;cursor:pointer;letter-spacing:.4px;margin-top:8px;transition:filter .15s,transform .1s}
+    .btn:hover{filter:brightness(.93)}
+    .btn:active{transform:scale(.98)}
+
+    .legend{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px}
+    .tag{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:#f2f4f7;font-size:11.5px;color:#475467}
+    .dot{width:11px;height:11px;border-radius:3px;border:1px solid #d1d5db;flex-shrink:0}
+    .inputdot{background:var(--input)}.autodot{background:var(--auto)}.advdot{background:var(--adv)}
+
+    .note{font-size:11.5px;line-height:1.6;color:var(--muted)}
+    .section-sub{font-size:12px;font-weight:700;color:#475467;margin:8px 0 4px;padding-bottom:2px;border-bottom:1px dashed #e5eaf3}
+
+    .charts{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:12px}
+    .chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:12px 14px}
+    .chart-wrap .card-title{margin-bottom:8px;font-size:13px}
+    canvas{display:block;width:100%;height:290px}
+
+    .summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px;margin-bottom:10px}
+    .kv{background:#f8faff;border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+    .kv .kv-label{font-size:11px;color:var(--muted);margin-bottom:2px}
+    .kv .kv-value{font-size:14px;font-weight:700;color:#1e3a5f}
+    .kv.highlight{background:var(--blue-lt);border-color:#b8ccf7}
+    .kv.highlight .kv-value{color:var(--blue)}
+
+    .tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border)}
+    table{border-collapse:collapse;width:100%;font-size:11.5px}
+    th,td{border-bottom:1px solid #edf0f7;border-right:1px solid #edf0f7;padding:6px 8px;text-align:right;white-space:nowrap}
+    th:last-child,td:last-child{border-right:none}
+    tbody tr:last-child td{border-bottom:none}
+    th{background:#f3f5fb;color:#344054;font-weight:700;font-size:11px;position:sticky;top:0}
+    th:first-child,td:first-child{text-align:left;font-weight:600}
+    tbody tr:hover td{background:#f8faff}
+
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.2px}
+    .ok{background:#d1fae5;color:#047857}
+    .warn{background:#fef3c7;color:#b45309}
+    .bad{background:#fee2e2;color:#b91c1c}
+    .pass-banner{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:8px;font-weight:700;font-size:13px}
+    .pass-banner.ok{background:#d1fae5;color:#047857}
+    .pass-banner.bad{background:#fee2e2;color:#b91c1c}
+    .audit{border:1px solid var(--border);border-radius:8px;background:#fbfcff;padding:9px 10px;margin-bottom:10px}
+    .audit-title{font-size:12px;font-weight:700;color:#344054;margin-bottom:6px}
+    .audit-text{font-size:11.5px;color:#475467;line-height:1.55}
+    .audit-actions{margin-top:6px;padding-left:16px}
+    .audit-actions li{margin:2px 0}
+    .mini-table{width:100%;font-size:10.5px;margin-top:6px;border:1px solid #e5eaf3;border-radius:6px;overflow:hidden}
+    .mini-table th,.mini-table td{padding:4px 5px}
+
+    details summary{cursor:pointer;font-weight:700;color:#344054;padding:2px 0;list-style:none}
+    details summary::before{content:'▶ ';font-size:10px;color:var(--muted)}
+    details[open] summary::before{content:'▼ '}
+    details .detail-body{margin-top:8px}
+
+    @media(max-width:1100px){.layout{grid-template-columns:1fr}.charts{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>HRS Ring 液压缓冲计算校核 v3</h1>
+  <p>目标/公差版：0.524m/s 工况下校核 HRS 附加力 3000N，整车总力为基础阻尼力 + HRS 附加力；介入点按 5mm 档位调节，并计算尺寸/形位公差导致的性能波动是否满足 ±10%。</p>
+</header>
+
+<main>
+  <div class="layout">
+
+    <!-- ══ LEFT PANEL ══ -->
+    <section>
+
+      <!-- 颜色说明 + 按钮 -->
+      <div class="card">
+        <div class="card-title">参数颜色说明</div>
+        <div class="legend">
+          <span class="tag"><span class="dot inputdot"></span>黄色：需输入/可调</span>
+          <span class="tag"><span class="dot autodot"></span>蓝色：自动计算</span>
+          <span class="tag"><span class="dot advdot"></span>紫色：需实测标定（初值为几何估算）</span>
+        </div>
+        <button class="btn" id="calcBtn" type="button">▶ 重新计算</button>
+      </div>
+
+      <!-- 1. 结构参数 -->
+      <div class="card">
+        <div class="card-title">1. HRS 基础结构参数</div>
+        <div class="row"><label>活塞杆直径 d<sub>rod</sub> / mm</label><input class="user" id="rodD" type="number" value="25" step="0.1"></div>
+        <div class="row"><label>套筒内径 D<sub>tube</sub> (=密封直径) / mm</label><input class="user" id="tubeID" type="number" value="32.5" step="0.01"></div>
+        <div class="row"><label>Ring 外径 D<sub>o</sub> / mm</label><input class="user" id="ringOD" type="number" value="32.15" step="0.01"></div>
+        <div class="row"><label>Ring 内径 D<sub>i</sub> / mm</label><input class="user" id="ringID" type="number" value="29" step="0.01"></div>
+        <div class="row"><label>Ring 高度 H<sub>ring</sub> / mm</label><input class="user" id="ringH" type="number" value="7.5" step="0.01"></div>
+        <div class="row"><label>几何径向壁厚 (D<sub>o</sub>−D<sub>i</sub>)/2 / mm</label><input class="auto" id="ringTgeom" type="number" readonly></div>
+        <div class="row"><label>计算用径向壁厚 h / mm</label><input class="user" id="ringTrad" type="number" value="1.575" step="0.01"></div>
+        <div class="row"><label>径向补偿间隙 c = (D<sub>tube</sub>−D<sub>o</sub>)/2 / mm</label><input class="auto" id="clearanceDisp" type="number" readonly></div>
+        <div class="row"><label>Ring 平均半径 r / mm</label><input class="auto" id="rMeanDisp" type="number" readonly></div>
+        <div class="section-sub">强度参数</div>
+        <div class="row"><label>Ring 弹性模量 E / GPa</label><input class="user" id="eMod" type="number" value="110" step="1"></div>
+        <div class="row"><label>Ring 屈服强度 σ<sub>y</sub> / MPa</label><input class="user" id="yieldMPa" type="number" value="250" step="5"></div>
+        <div class="row"><label>强度校核压差 p<sub>max</sub> / MPa</label><input class="user" id="pMax" type="number" value="12" step="0.5"></div>
+      </div>
+
+      <!-- 2. 行程位置 -->
+      <div class="card">
+        <div class="card-title">2. 行程位置参数</div>
+        <div class="row"><label>套筒总长度 L<sub>tube</sub> / mm</label><input class="user" id="tubeL" type="number" value="52" step="0.1"></div>
+        <div class="row"><label>导向座长度 L<sub>guide</sub> / mm</label><input class="user" id="guideL" type="number" value="7" step="0.1"></div>
+        <div class="row"><label>入口到导向座距离 L<sub>tube</sub>−L<sub>guide</sub> / mm</label><input class="auto" id="entryToGuide" type="number" readonly></div>
+        <div class="row"><label>介入点 s<sub>start</sub> / mm（5mm档）</label><input class="user" id="sOnTarget" type="number" value="10" step="5"></div>
+        <div class="row"><label>5mm档后介入点 s<sub>on</sub> / mm</label><input class="auto" id="sOn" type="number" readonly></div>
+        <div class="row"><label>对应初始 Ring 到导向座距离 / mm</label><input class="auto" id="startToGuide" type="number" readonly></div>
+        <div class="row"><label>复原拉伸总行程 S / mm</label><input class="user" id="strokeS" type="number" value="50" step="0.5"></div>
+        <div class="row"><label>缓冲垫高度 / mm</label><input class="user" id="bufferH" type="number" value="6" step="0.1"></div>
+        <div class="row"><label>限位座高度 / mm</label><input class="user" id="seatH" type="number" value="10.5" step="0.1"></div>
+        <div class="row"><label>Ring 上方零件长度 / mm</label><input class="auto" id="ringAbove" type="number" readonly></div>
+      </div>
+
+      <!-- 3. 泄流与槽 -->
+      <div class="card">
+        <div class="card-title">3. 泄流通道参数</div>
+
+        <div class="section-sub">多槽阀片 Bleed</div>
+        <div class="row"><label>多槽阀片槽数量 n</label><input class="user" id="bleedN" type="number" value="2" step="1"></div>
+        <div class="row"><label>单槽宽度 a / mm</label><input class="user" id="bleedW" type="number" value="1" step="0.01"></div>
+        <div class="row"><label>槽有效高度 b / mm</label><input class="user" id="bleedH" type="number" value="0.203" step="0.001"></div>
+        <div class="row"><label>Bleed 开口面积 n·a·b / mm²</label><input class="auto" id="bleedA" type="number" readonly></div>
+
+        <div class="section-sub">Ring 开口端隙（需实测/标定）</div>
+        <div class="row"><label>自由开口端隙 g<sub>0</sub> / mm　<span style="font-weight:400;color:#6b7280">（实测Ring自由状态端隙）</span></label><input class="user" id="ringGap0" type="number" value="0.20" step="0.01"></div>
+        <div class="row"><label>端隙有效系数 k<sub>gap</sub>　<span style="font-weight:400;color:#6b7280">（全开=1.0；有遮挡/斜切降至0.3–0.8）</span></label><input class="adv" id="ringGapK" type="number" value="1.00" step="0.05"></div>
+        <div class="row"><label>胀开后端隙增量系数 k<sub>expand</sub>　<span style="font-weight:400;color:#6b7280">（完全贴壁时Δg≈k×2πc；有止口可降低）</span></label><input class="adv" id="ringGapExpandK" type="number" value="1.00" step="0.05"></div>
+
+        <div class="section-sub">初始环隙泄漏（Ring未贴壁，需标定）</div>
+        <div class="row"><label>初始环隙泄漏系数 k<sub>leak</sub>　<span style="font-weight:400;color:#6b7280">（有效截面比，需标定）</span></label><input class="adv" id="leakK" type="number" value="0.15" step="0.01"></div>
+        <div class="row"><label>初始环隙面积 π·D·c·k<sub>leak</sub> / mm²</label><input class="auto" id="leakStartADisp" type="number" readonly></div>
+        <div class="row"><label>完全进入后残余泄漏 / mm²　<span style="font-weight:400;color:#6b7280">（含油膜/配合间隙，需标定）</span></label><input class="adv" id="leakFull" type="number" value="0.20" step="0.01"></div>
+
+        <div class="section-sub">R9 长槽（锥形圆弧）</div>
+        <div class="row"><label>R9 槽数量</label><input class="user" id="r9N" type="number" value="4" step="1"></div>
+        <div class="row"><label>R9 圆弧半径 / mm</label><input class="user" id="r9R" type="number" value="9" step="0.1"></div>
+        <div class="row"><label>R9 长槽有效长度 / mm</label><input class="user" id="r9Len" type="number" value="20.5" step="0.1"></div>
+        <div class="row"><label>R9 后部锥角 θ / °</label><input class="user" id="r9Angle" type="number" value="2.65" step="0.01"></div>
+        <div class="row"><label>R9 入口最大槽深 d<sub>0</sub>=L·tanθ / mm</label><input class="auto" id="r9D0Disp" type="number" readonly></div>
+
+        <div class="section-sub">R6 短槽（锥形圆弧）</div>
+        <div class="row"><label>R6 槽数量</label><input class="user" id="r6N" type="number" value="4" step="1"></div>
+        <div class="row"><label>R6 圆弧半径 / mm</label><input class="user" id="r6R" type="number" value="6" step="0.1"></div>
+        <div class="row"><label>R6 短槽有效长度 / mm</label><input class="user" id="r6Len" type="number" value="15" step="0.1"></div>
+        <div class="row"><label>R6 后部锥角 θ / °</label><input class="user" id="r6Angle" type="number" value="3.88" step="0.01"></div>
+        <div class="row"><label>R6 入口最大槽深 d<sub>0</sub>=L·tanθ / mm</label><input class="auto" id="r6D0Disp" type="number" readonly></div>
+        <div class="row"><label>槽关闭指数 m（1=线性, &gt;1=后段更快）</label><input class="user" id="slotExp" type="number" value="1.2" step="0.05"></div>
+      </div>
+
+      <!-- 4. 目标与速度 -->
+      <div class="card">
+        <div class="card-title">4. 目标曲线、油液与速度</div>
+        <div class="row"><label>目标速度 v<sub>target</sub> / m/s（VR-EF-33 ramp）</label><input class="user" id="vTarget" type="number" value="0.524" step="0.001"></div>
+        <div class="row"><label>基础阻尼力 F<sub>damp</sub> @v<sub>target</sub> / N</label><input class="user" id="baseDamping" type="number" value="0" step="50"></div>
+        <div class="row"><label>HRS 附加力目标 ΔF<sub>HRS</sub> / N</label><input class="user" id="fTarget" type="number" value="3000" step="50"></div>
+        <div class="row"><label>目标总力 F<sub>total</sub>=F<sub>damp</sub>+ΔF / N</label><input class="auto" id="totalTarget" type="number" readonly></div>
+        <div class="row"><label>左侧平均斜率目标 / N/mm</label><input class="user" id="riseSlopeTarget" type="number" value="150" step="10"></div>
+        <div class="row"><label>目标峰值位移 s<sub>peak,target</sub> / mm</label><input class="auto" id="targetPeakS" type="number" readonly></div>
+        <div class="row"><label>当前左侧平均斜率 / N/mm</label><input class="auto" id="currentRiseSlope" type="number" readonly></div>
+        <div class="row"><label>油液密度 ρ / kg/m³</label><input class="user" id="rho" type="number" value="840" step="1"></div>
+        <div class="row"><label>动粘度 ν / mm²/s</label><input class="user" id="nu" type="number" value="21" step="0.1"></div>
+        <div class="row"><label>流量系数 C<sub>d</sub></label><input class="user" id="cd" type="number" value="0.65" step="0.01"></div>
+        <div class="row"><label>Sin 峰值速度 1 / m/s</label><input class="user" id="v1" type="number" value="0.3" step="0.01"></div>
+        <div class="row"><label>Sin 峰值速度 2 / m/s</label><input class="user" id="v2" type="number" value="0.6" step="0.01"></div>
+        <div class="row"><label>Sin 峰值速度 3 / m/s</label><input class="user" id="v3" type="number" value="1.0" step="0.01"></div>
+      </div>
+
+      <!-- 5. 尺寸和形位公差 -->
+      <div class="card">
+        <details open>
+          <summary>5. 尺寸和形位公差校核</summary>
+          <div class="detail-body">
+            <div class="row"><label>性能目标公差 / %</label><input class="user" id="perfTolPct" type="number" value="10" step="1"></div>
+            <div class="row"><label>套筒内径公差 ± / mm</label><input class="user" id="tolTubeID" type="number" value="0.05" step="0.01"></div>
+            <div class="row"><label>Ring 外径公差 ± / mm</label><input class="user" id="tolRingOD" type="number" value="0.03" step="0.01"></div>
+            <div class="row"><label>Ring 自由端隙公差 ± / mm</label><input class="user" id="tolRingGap0" type="number" value="0.03" step="0.01"></div>
+            <div class="row"><label>Bleed 槽宽公差 ± / mm</label><input class="user" id="tolBleedW" type="number" value="0.02" step="0.005"></div>
+            <div class="row"><label>Bleed 槽高公差 ± / mm</label><input class="user" id="tolBleedH" type="number" value="0.01" step="0.005"></div>
+            <div class="row"><label>R9/R6 锥角公差 ± / °</label><input class="user" id="tolSlotAngle" type="number" value="0.10" step="0.01"></div>
+            <div class="row"><label>同轴度/位置度等效径向偏差 / mm</label><input class="user" id="geoPosTol" type="number" value="0.03" step="0.01"></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- 6. 标定参数 -->
+      <div class="card">
+        <details open>
+          <summary>6. 模型标定参数</summary>
+          <div class="detail-body">
+            <div class="row"><label>开口环柔度系数 K<sub>open</sub></label><input class="adv" id="kopen" type="number" value="0.10" step="0.01"></div>
+            <div class="row"><label>Ring 撑开阈值压力 p<sub>close</sub> / MPa</label><input class="auto" id="pCloseDisp" type="number" readonly></div>
+            <p class="note" style="margin-top:7px">
+              p<sub>close</sub> = K<sub>open</sub>·E·h·c/r²。当 potential ΔP ≥ p<sub>close</sub> 时 Ring 开始撑向管壁，expandRatio 提升，未贴壁环隙关闭，端隙因补偿圆周而增大。K<sub>open</sub> 越小，Ring 越容易在低速胀开。<br><br>
+              <b>力值敏感度排序（高→低）：</b> k<sub>gap</sub> / g<sub>0</sub> / k<sub>leak</sub> → leakFull → K<sub>open</sub> → k<sub>expand</sub>。<br>
+              <b>标定顺序：</b>
+              ① 用示功图实测峰值力反推总等效泄流面积 A_total；
+              ② 实测 Ring 自由端隙 g<sub>0</sub> 代入；
+              ③ 用低速（0.1～0.3 m/s）与高速（0.8～1.0 m/s）曲线对比，依次标定 k<sub>leak</sub>、k<sub>gap</sub>、leakFull；
+              ④ 最后用 1.5mm 与 2.0mm 壁厚起效速度差反标定 K<sub>open</sub>。<br>
+              <b style="color:#b91c1c">注意：所有紫色参数均为需实测标定的拟合系数，初始值为几何估算值，不代表实际力值。</b>
+            </p>
+          </div>
+        </details>
+      </div>
+
+      <!-- 计算说明 -->
+      <div class="card">
+        <details>
+          <summary>计算过程说明</summary>
+          <div class="detail-body note">
+            ① <b>位移→进入深度</b>：x = max(0, s − s<sub>on</sub>)；s<sub>on</sub> = 初始Ring到导向座距离 − (L<sub>tube</sub>−L<sub>guide</sub>)。<br>
+            ② <b>密封比</b>：sealRatio = (x/H<sub>ring</sub>)^1.35，x=0 时 sealRatio=0 → 附加力强制为0。<br>
+            ③ <b>流量</b>：Q = A<sub>eff</sub> × v（m³/s）。<br>
+            ④ <b>槽面积（圆弧段）</b>：d(x) = d₀·(1−x/L)^m，A_seg = R²·arccos[(R−d)/R] − (R−d)·√(2Rd−d²)，A_groove = N·A_seg。<br>
+            ⑤ <b>Ring 胀开</b>：p<sub>close</sub> = K<sub>open</sub>·E·h·c/r²；expandRatio 与 ΔP、端隙面积自洽迭代，避免先用过高潜在压差导致 Ring 过胀。<br>
+            ⑥ <b>端隙更新</b>：g = g₀ + k<sub>expand</sub>·2πc·expandRatio。<br>
+            ⑦ <b>总泄流面积</b>：A<sub>total</sub> = A<sub>bleed</sub> + A<sub>gap</sub> + A<sub>R9</sub> + A<sub>R6</sub> + A<sub>entry</sub> + A<sub>unseated</sub> + A<sub>residual</sub>。<br>
+            ⑧ <b>附加力</b>：ΔP = ½ρ(Q/C<sub>d</sub>/A<sub>total</sub>)²；F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
+            ⑨ <b>Sin 采样</b>：θ 均匀采样，s = S/2·(1−cosθ)，v = v<sub>peak</sub>·sinθ，261 点。
+          </div>
+        </details>
+      </div>
+
+    </section>
+
+    <!-- ══ RIGHT PANEL ══ -->
+    <section>
+
+      <div class="charts">
+        <div class="chart-wrap">
+          <div class="card-title">F-S 曲线：HRS附加力 vs 复原拉伸位移（Sin振动）</div>
+          <canvas id="fsChart"></canvas>
+        </div>
+        <div class="chart-wrap">
+          <div class="card-title">F-V 曲线：HRS附加力 vs 瞬时复原速度</div>
+          <canvas id="fvChart"></canvas>
+        </div>
+        <div class="chart-wrap">
+          <div class="card-title">Ring 胀开比例 expandRatio vs 复原拉伸位移</div>
+          <canvas id="openChart"></canvas>
+        </div>
+        <div class="chart-wrap">
+          <div class="card-title">等效压差 ΔP vs 复原拉伸位移</div>
+          <canvas id="dpChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">关键结果</div>
+        <div id="passLine" style="margin-bottom:10px"></div>
+        <div id="requirementAudit"></div>
+        <div id="summaryKvs" class="summary-grid"></div>
+        <div class="tbl-wrap" style="margin-top:10px">
+          <div id="resultTable"></div>
+        </div>
+      </div>
+
+    </section>
+  </div>
+</main>
+
+<script>
+'use strict';
+
+/* ── Helpers ── */
+function $(id){return document.getElementById(id)}
+function num(id){const e=$(id);const v=e?Number(e.value):0;return Number.isFinite(v)?v:0}
+function setv(id,v,d){const e=$(id);if(e)e.value=Number.isFinite(v)?v.toFixed(d):''}
+function fmt(v,d){return Number.isFinite(v)?Number(v).toFixed(d):'-'}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function niceMax(v){
+  if(!Number.isFinite(v)||v<=0)return 1;
+  const e=Math.floor(Math.log10(v));
+  const b=Math.pow(10,e);
+  const n=v/b;
+  return (n<=1?1:n<=2?2:n<=5?5:10)*b;
+}
+
+/* ── Circular arc groove cross-section area (圆弧槽截面积)
+   A = R²·arccos[(R-d)/R] - (R-d)·√(2Rd - d²)
+   where R = groove radius, d = groove depth at this x ── */
+function arcGrooveArea(R, d){
+  if(R<=0||d<=0)return 0;
+  const dd=Math.min(d, R*0.99);
+  return R*R*Math.acos((R-dd)/R)-(R-dd)*Math.sqrt(Math.max(0,2*R*dd-dd*dd));
+}
+
+/* ── Tapered groove areas at penetration depth x
+   Taper: d(x)=d0·(1-x/L)^m; x<0 or x>L → d=0 ── */
+function slotPair(x, p){
+  const m=Math.max(p.slotExp, 0.05);
+  // R9 long groove
+  const r9ratio=(p.r9Len>0&&x<p.r9Len)?Math.pow(Math.max(1-x/p.r9Len,0),m):0;
+  const r9d=p.r9D0*r9ratio;
+  const r9=arcGrooveArea(p.r9R, r9d)*p.r9N;
+  // R6 short groove
+  const r6ratio=(p.r6Len>0&&x<p.r6Len)?Math.pow(Math.max(1-x/p.r6Len,0),m):0;
+  const r6d=p.r6D0*r6ratio;
+  const r6=arcGrooveArea(p.r6R, r6d)*p.r6N;
+  return {r9, r6};
+}
+
+/* ── Read all parameters, compute derived values ── */
+function readParams(){
+  const p={
+    rodD:num('rodD'), tubeID:num('tubeID'), ringOD:num('ringOD'), ringID:num('ringID'),
+    ringH:num('ringH'), ringTrad:num('ringTrad'),
+    eMod:num('eMod'), yieldMPa:num('yieldMPa'), pMax:num('pMax'),
+    tubeL:num('tubeL'), guideL:num('guideL'), sOnTarget:num('sOnTarget'), strokeS:num('strokeS'),
+    bufferH:num('bufferH'), seatH:num('seatH'),
+    bleedN:num('bleedN'), bleedW:num('bleedW'), bleedH:num('bleedH'),
+    ringGap0:num('ringGap0'), ringGapK:num('ringGapK'), ringGapExpandK:num('ringGapExpandK'),
+    leakK:num('leakK'), leakFull:num('leakFull'),
+    r9N:num('r9N'), r9R:num('r9R'), r9Len:num('r9Len'), r9Angle:num('r9Angle'),
+    r6N:num('r6N'), r6R:num('r6R'), r6Len:num('r6Len'), r6Angle:num('r6Angle'),
+    slotExp:num('slotExp'),
+    vTarget:num('vTarget'), baseDamping:num('baseDamping'), fTarget:num('fTarget'),
+    riseSlopeTarget:num('riseSlopeTarget'), rho:num('rho'), nu:num('nu'), cd:num('cd'),
+    vList:[num('v1'),num('v2'),num('v3')],
+    perfTolPct:num('perfTolPct'), tolTubeID:num('tolTubeID'), tolRingOD:num('tolRingOD'),
+    tolRingGap0:num('tolRingGap0'), tolBleedW:num('tolBleedW'), tolBleedH:num('tolBleedH'),
+    tolSlotAngle:num('tolSlotAngle'), geoPosTol:num('geoPosTol'),
+    kopen:num('kopen')
+  };
+
+  // Derived geometry
+  p.ringTgeom=(p.ringOD-p.ringID)/2;
+  p.clearance=Math.max((p.tubeID-p.ringOD)/2, 0);
+  p.rMean=(p.ringOD+p.ringID)/4;
+  p.Aeff=Math.PI*(p.tubeID*p.tubeID-p.rodD*p.rodD)/4;
+  p.entryToGuide=p.tubeL-p.guideL;
+  p.sOn=Math.round(p.sOnTarget/5)*5;
+  p.startToGuide=p.entryToGuide+p.sOn;
+  p.ringAbove=p.bufferH+p.seatH-p.ringH;
+  p.totalTarget=p.baseDamping+p.fTarget;
+  p.targetPeakS=p.sOn+p.fTarget/Math.max(p.riseSlopeTarget,1e-9);
+
+  // Bleed area
+  p.bleedA=p.bleedN*p.bleedW*p.bleedH;
+
+  // Initial unseated circumferential leak area: π·D·c·k_leak
+  p.leakStartA=Math.PI*p.tubeID*p.clearance*p.leakK;
+
+  // Groove entry depths from taper angle
+  p.r9D0=p.r9Len*Math.tan(p.r9Angle*Math.PI/180);
+  p.r6D0=p.r6Len*Math.tan(p.r6Angle*Math.PI/180);
+
+  // Ring expansion threshold pressure (MPa)
+  // p_close = Kopen · E[MPa] · h · c / r²
+  const eMod_MPa=p.eMod*1000;
+  p.pClose=(p.rMean>0&&p.clearance>0)
+    ? p.kopen*eMod_MPa*p.ringTrad*p.clearance/(p.rMean*p.rMean)
+    : Infinity;
+
+  // Strength check at pMax
+  p.sigmaMax=p.ringTrad>0.05?p.pMax*p.rMean/p.ringTrad:Infinity;
+  p.SF=p.yieldMPa>0&&Number.isFinite(p.sigmaMax)?p.yieldMPa/p.sigmaMax:0;
+
+  // Write auto-computed display values
+  setv('ringTgeom', p.ringTgeom, 3);
+  setv('clearanceDisp', p.clearance, 3);
+  setv('rMeanDisp', p.rMean, 3);
+  setv('entryToGuide', p.entryToGuide, 2);
+  setv('startToGuide', p.startToGuide, 2);
+  setv('sOn', p.sOn, 2);
+  setv('ringAbove', p.ringAbove, 2);
+  setv('totalTarget', p.totalTarget, 0);
+  setv('targetPeakS', p.targetPeakS, 2);
+  setv('bleedA', p.bleedA, 3);
+  setv('leakStartADisp', p.leakStartA, 3);
+  setv('r9D0Disp', p.r9D0, 3);
+  setv('r6D0Disp', p.r6D0, 3);
+  setv('pCloseDisp', Number.isFinite(p.pClose)?p.pClose:999, 2);
+
+  return p;
+}
+
+/* ── Single point physics
+   Uses Bernoulli orifice formula (first-principles):
+   Q = Aeff·v [m³/s]
+   ΔP = ½ρ(Q/Cd/A_total)² [Pa] → MPa
+   F = sealRatio · ΔP[MPa] · Aeff[mm²]  (1 MPa·mm² = 1 N)
+
+   Key model improvements over empirical kForce version:
+   · sealRatio = (x/H)^1.35  (power-law, not linear)
+   · Physical Ring expansion: p_close from ring stiffness
+   · Gap grows when ring expands: g = g0 + kExpand·2πc·expandRatio
+   · Entry circumferential leak that closes as ring seals
+   · Residual leak after full closure ── */
+function physPoint(s, v, p){
+  const x=Math.max(0, s-p.sOn);
+
+  // Pre-entry or zero speed: no HRS force
+  if(x<=0||v<=0){
+    return {s,v,x:0,force:0,dpMPa:0,sealRatio:0,expandRatio:0,
+            gapWidth:p.ringGap0,gapArea:0,unseated:0,entryLeak:0,
+            slotR9:0,slotR6:0,totalA:p.bleedA+p.leakFull,
+            qLmin:0,stress:0,state:'未进入'};
+  }
+
+  // Seal ratio: how well ring creates a pressure chamber (0 at entry, 1 when fully inside)
+  const sealRatio=Math.pow(clamp(x/Math.max(p.ringH,0.001),0,1), 1.35);
+
+  // Flow rate (m³/s)
+  const Q=p.Aeff*1e-6*v;
+  const qLmin=Q*60000;
+
+  // Groove areas at this depth
+  const slots=slotPair(x, p);
+
+  // Entry leak: unseated circumferential gap, closes as ring seals
+  const entryLeak=p.leakStartA*Math.pow(1-sealRatio, 1.15);
+
+  // ── Ring expansion model ──
+  // Solve expansion and pressure self-consistently. The old one-pass method
+  // used a high potential pressure to expand the ring, then recalculated force
+  // with the enlarged leak area. That over-expanded the gap and created a
+  // false dip / second hump on the right side of the F-S curve.
+  let expandRatio=0;
+  let gapWidth=p.ringGap0;
+  let gapArea=0;
+  let unseated=0;
+  let totalA=0;
+  let dpMPa=0;
+
+  for(let iter=0; iter<30; iter++){
+    gapWidth=p.ringGap0+p.ringGapExpandK*2*Math.PI*p.clearance*expandRatio;
+    gapArea=p.ringGapK*p.ringH*Math.max(gapWidth,0)*sealRatio;
+    unseated=p.leakStartA*(1-expandRatio)*sealRatio;
+    totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+unseated+p.leakFull;
+
+    const totalA_m2=Math.max(totalA,0.001)*1e-6;
+    const dpPa=(p.cd>0)?0.5*p.rho*Math.pow(Q/(p.cd*totalA_m2),2):0;
+    dpMPa=dpPa/1e6;
+
+    const nextExpand=(!Number.isFinite(p.pClose)||p.pClose<=0)
+      ? 1
+      : clamp(Math.pow(Math.max((dpMPa*sealRatio)/p.pClose,0),1.15), 0, 1);
+    const dampedExpand=0.65*expandRatio+0.35*nextExpand;
+    if(Math.abs(dampedExpand-expandRatio)<1e-5){
+      expandRatio=dampedExpand;
+      break;
+    }
+    expandRatio=dampedExpand;
+  }
+
+  gapWidth=p.ringGap0+p.ringGapExpandK*2*Math.PI*p.clearance*expandRatio;
+  gapArea=p.ringGapK*p.ringH*Math.max(gapWidth,0)*sealRatio;
+  unseated=p.leakStartA*(1-expandRatio)*sealRatio;
+  totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+unseated+p.leakFull;
+
+  const totalA_m2=Math.max(totalA,0.001)*1e-6;
+  const dpPa=(p.cd>0)?0.5*p.rho*Math.pow(Q/(p.cd*totalA_m2),2):0;
+  dpMPa=dpPa/1e6;
+  const force=sealRatio*dpMPa*p.Aeff;  // N = MPa × mm²
+
+  // Hoop stress (simplified: σ = ΔP·r/h, at current dp)
+  const stress=p.ringTrad>0.05?dpMPa*p.rMean/p.ringTrad:0;
+
+  let state='贴壁不足';
+  if(expandRatio>=0.95)state='已贴壁';
+  else if(expandRatio>=0.50)state='部分贴壁';
+
+  return {s,v,x,force,dpMPa,sealRatio,expandRatio,gapWidth,gapArea,unseated,
+          entryLeak,slotR9:slots.r9,slotR6:slots.r6,totalA,qLmin,stress,state};
+}
+
+/* ── Build F-S sin series
+   Uses uniform-θ sampling: s = S/2·(1−cosθ), v = vPeak·sinθ
+   This gives better resolution near start/end where velocity changes rapidly ── */
+function buildSinSeries(vPeak, p, name){
+  const steps=260;
+  const pts=[];
+  for(let i=0;i<=steps;i++){
+    const th=Math.PI*i/steps;
+    const s=p.strokeS*0.5*(1-Math.cos(th));  // cosine displacement rule
+    const v=vPeak*Math.sin(th);               // sin velocity
+    pts.push(physPoint(s, v, p));
+  }
+  const peak=pts.reduce((a,b)=>b.force>a.force?b:a, pts[0]);
+  return {name:name||fmt(vPeak,1)+' m/s', vPeak, points:pts, peak};
+}
+
+function buildTargetEnvelope(p){
+  const pts=[];
+  const steps=160;
+  const sPeak=clamp(p.targetPeakS, p.sOn+1e-6, p.strokeS);
+  for(let i=0;i<=steps;i++){
+    const s=p.strokeS*i/steps;
+    let y=0;
+    if(s>p.sOn){
+      const u=clamp((s-p.sOn)/(sPeak-p.sOn),0,1);
+      // Smoothstep keeps the force increase harmonic instead of abrupt.
+      y=p.fTarget*(u*u*(3-2*u));
+    }
+    pts.push({x:s,y});
+  }
+  return {
+    name:'目标包络',
+    points:pts,
+    peak:{x:sPeak,y:p.fTarget},
+    peakText:'目标 '+fmt(p.fTarget,0)+'N',
+    color:'#ef4444',
+    dash:true
+  };
+}
+
+/* ── Build all data ── */
+function buildData(){
+  const p=readParams();
+  const targetSeries=buildSinSeries(p.vTarget, p, '目标 '+fmt(p.vTarget,3)+' m/s');
+  targetSeries.isTarget=true;
+  const series=[targetSeries].concat(
+    p.vList
+      .filter(function(vPeak){return Math.abs(vPeak-p.vTarget)>1e-6;})
+      .map(function(vPeak){return buildSinSeries(vPeak, p);})
+  );
+  // Requirement check: only the maximum HRS additional force at v_target is compared with 3000N.
+  const target=targetSeries.peak;
+  p.currentRiseSlope=target.s>p.sOn ? target.force/(target.s-p.sOn) : Infinity;
+  setv('currentRiseSlope', p.currentRiseSlope, 1);
+  return {p, series, target, targetEnvelope:buildTargetEnvelope(p)};
+}
+
+/* ── Hi-DPI Canvas chart ──
+   opt.markers  = [{x, label, color}]  vertical dashed lines with rotated labels
+   series[i].peak     = {x, y}         position of peak on this series
+   series[i].peakText = string          annotation text shown at peak ── */
+function drawChart(id, series, opt){
+  const c=$(id);
+  if(!c)return;
+  const dpr=window.devicePixelRatio||1;
+  const cssW=c.offsetWidth||700;
+  const cssH=c.offsetHeight||290;
+  c.width=Math.round(cssW*dpr);
+  c.height=Math.round(cssH*dpr);
+  const ctx=c.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const W=cssW, H=cssH;
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
+
+  const pl={l:60,t:22,r:W-16,b:H-44};
+  const allX=series.flatMap(s=>s.points.map(p=>p.x));
+  const allY=series.flatMap(s=>s.points.map(p=>p.y));
+  const xMax=opt.xMax!==undefined?opt.xMax:niceMax(Math.max(...allX)*1.02);
+  const yMax=opt.yMax!==undefined?opt.yMax:niceMax(Math.max(...allY)*1.1||1);
+  const xMin=opt.xMin||0, yMin=opt.yMin||0;
+  const sx=x=>pl.l+(x-xMin)/Math.max(1e-9,xMax-xMin)*(pl.r-pl.l);
+  const sy=y=>pl.b-(y-yMin)/Math.max(1e-9,yMax-yMin)*(pl.b-pl.t);
+
+  /* Grid */
+  ctx.strokeStyle='#edf1f7';ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){const y=yMin+(yMax-yMin)*i/5;const yy=sy(y);ctx.beginPath();ctx.moveTo(pl.l,yy);ctx.lineTo(pl.r,yy);ctx.stroke();}
+  for(let i=0;i<=5;i++){const x=xMin+(xMax-xMin)*i/5;const xx=sx(x);ctx.beginPath();ctx.moveTo(xx,pl.t);ctx.lineTo(xx,pl.b);ctx.stroke();}
+
+  /* Axes */
+  ctx.strokeStyle='#94a3b8';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(pl.l,pl.t);ctx.lineTo(pl.l,pl.b);ctx.lineTo(pl.r,pl.b);ctx.stroke();
+
+  /* Tick labels */
+  ctx.font='11px Microsoft YaHei,Arial';ctx.fillStyle='#64748b';ctx.textAlign='right';
+  for(let i=0;i<=5;i++){const y=yMin+(yMax-yMin)*i/5;ctx.fillText(fmt(y,opt.yDigits!=null?opt.yDigits:0),pl.l-5,sy(y)+3.5);}
+  ctx.textAlign='center';
+  for(let i=0;i<=5;i++){const x=xMin+(xMax-xMin)*i/5;ctx.fillText(fmt(x,opt.xDigits!=null?opt.xDigits:1),sx(x),pl.b+14);}
+
+  /* Target horizontal dashed line */
+  if(opt.targetY!=null&&opt.targetY>yMin&&opt.targetY<yMax){
+    ctx.strokeStyle='#ef4444';ctx.setLineDash([5,4]);ctx.lineWidth=1.3;
+    ctx.beginPath();ctx.moveTo(pl.l,sy(opt.targetY));ctx.lineTo(pl.r,sy(opt.targetY));ctx.stroke();
+    ctx.setLineDash([]);ctx.fillStyle='#ef4444';ctx.textAlign='right';ctx.font='bold 11px Microsoft YaHei,Arial';
+    ctx.fillText('目标 '+fmt(opt.targetY,0)+'N',pl.r-2,sy(opt.targetY)-5);
+  }
+
+  /* Vertical marker lines with horizontal labels at top */
+  if(opt.markers&&opt.markers.length){
+    opt.markers.forEach(function(mk, midx){
+      if(mk.x==null||mk.x<xMin||mk.x>xMax)return;
+      const xx=sx(mk.x);
+      const col=mk.color||'#f59e0b';
+      /* Dashed vertical line */
+      ctx.strokeStyle=col;ctx.setLineDash([4,3]);ctx.lineWidth=1.3;
+      ctx.beginPath();ctx.moveTo(xx,pl.t+2);ctx.lineTo(xx,pl.b);ctx.stroke();
+      ctx.setLineDash([]);
+      /* Horizontal label — alternate two y-levels to avoid overlap between adjacent markers */
+      const lvl=(mk.labelY!=null)?mk.labelY:(midx%2);
+      const ty=pl.t+10+lvl*13;
+      ctx.font='bold 9.5px Microsoft YaHei,Arial';
+      ctx.fillStyle=col;
+      /* Align left/center/right depending on position in chart */
+      const nearRight=(xx>pl.r-65);
+      const nearLeft=(xx<pl.l+20);
+      ctx.textAlign=nearRight?'right':(nearLeft?'left':'center');
+      ctx.fillText(mk.label, xx, ty);
+    });
+  }
+
+  /* Series lines + peak annotations + legend chips */
+  const colors=['#2457c5','#0f766e','#c2410c','#7c3aed'];
+  series.forEach(function(s,idx){
+    const color=s.color||colors[idx%colors.length];
+    /* Draw curve */
+    ctx.strokeStyle=color;ctx.lineWidth=s.dash?1.8:2.2;ctx.lineJoin='round';ctx.setLineDash(s.dash?[6,4]:[]);
+    ctx.beginPath();let first=true;
+    s.points.forEach(function(pt){const xx=sx(pt.x),yy=sy(pt.y);if(first){ctx.moveTo(xx,yy);first=false;}else ctx.lineTo(xx,yy);});
+    ctx.stroke();
+    ctx.setLineDash([]);
+    /* Peak annotation: filled dot + text label */
+    if(s.peak&&s.peakText){
+      const px=sx(s.peak.x), py=sy(s.peak.y);
+      ctx.beginPath();ctx.arc(px,py,4.5,0,Math.PI*2);
+      ctx.fillStyle='#ffffff';ctx.fill();
+      ctx.beginPath();ctx.arc(px,py,3.5,0,Math.PI*2);
+      ctx.fillStyle=color;ctx.fill();
+      ctx.beginPath();ctx.arc(px,py,4.5,0,Math.PI*2);
+      ctx.strokeStyle=color;ctx.lineWidth=1.2;ctx.stroke();
+      const nearRight=(px > pl.r-115);
+      ctx.font='bold 10px Microsoft YaHei,Arial';
+      ctx.fillStyle=color;
+      ctx.textAlign=nearRight?'right':'left';
+      ctx.fillText(s.peakText, nearRight?px-9:px+9, Math.max(pl.t+10, py-9));
+    }
+  });
+
+  /* Axis labels */
+  ctx.fillStyle='#475467';ctx.font='11.5px Microsoft YaHei,Arial';ctx.textAlign='center';
+  ctx.fillText(opt.xLabel,(pl.l+pl.r)/2,H-6);
+  ctx.save();ctx.translate(13,(pl.t+pl.b)/2);ctx.rotate(-Math.PI/2);ctx.fillText(opt.yLabel,0,0);ctx.restore();
+}
+
+function recalcParams(c, clearanceBias){
+  c.ringTgeom=(c.ringOD-c.ringID)/2;
+  c.clearance=Math.max((c.tubeID-c.ringOD)/2+(clearanceBias||0), 0);
+  c.rMean=(c.ringOD+c.ringID)/4;
+  c.Aeff=Math.PI*(c.tubeID*c.tubeID-c.rodD*c.rodD)/4;
+  c.bleedA=c.bleedN*c.bleedW*c.bleedH;
+  c.leakStartA=Math.PI*c.tubeID*c.clearance*c.leakK;
+  c.r9D0=c.r9Len*Math.tan(c.r9Angle*Math.PI/180);
+  c.r6D0=c.r6Len*Math.tan(c.r6Angle*Math.PI/180);
+  const eMod_MPa=c.eMod*1000;
+  c.pClose=(c.rMean>0&&c.clearance>0)
+    ? c.kopen*eMod_MPa*c.ringTrad*c.clearance/(c.rMean*c.rMean)
+    : Infinity;
+  c.sigmaMax=c.ringTrad>0.05?c.pMax*c.rMean/c.ringTrad:Infinity;
+  c.SF=c.yieldMPa>0&&Number.isFinite(c.sigmaMax)?c.yieldMPa/c.sigmaMax:0;
+  return c;
+}
+
+function toleranceVariant(p, signs){
+  const c=Object.assign({}, p);
+  c.tubeID=Math.max(0.1,p.tubeID+signs.tubeID*p.tolTubeID);
+  c.ringOD=Math.max(0.1,p.ringOD+signs.ringOD*p.tolRingOD);
+  c.ringGap0=Math.max(0,p.ringGap0+signs.ringGap0*p.tolRingGap0);
+  c.bleedW=Math.max(0,p.bleedW+signs.bleedW*p.tolBleedW);
+  c.bleedH=Math.max(0,p.bleedH+signs.bleedH*p.tolBleedH);
+  c.r9Angle=Math.max(0,p.r9Angle+signs.slotAngle*p.tolSlotAngle);
+  c.r6Angle=Math.max(0,p.r6Angle+signs.slotAngle*p.tolSlotAngle);
+  return recalcParams(c, signs.geo*p.geoPosTol);
+}
+
+function analyzeTolerance(data){
+  const p=data.p;
+  const signs=[-1,1];
+  const nominal=p.fTarget;
+  const lower=nominal*(1-p.perfTolPct/100);
+  const upper=nominal*(1+p.perfTolPct/100);
+  let minCase=null, maxCase=null, count=0;
+
+  signs.forEach(function(tubeID){
+  signs.forEach(function(ringOD){
+  signs.forEach(function(ringGap0){
+  signs.forEach(function(bleedW){
+  signs.forEach(function(bleedH){
+  signs.forEach(function(slotAngle){
+  signs.forEach(function(geo){
+    const cand=toleranceVariant(p,{tubeID,ringOD,ringGap0,bleedW,bleedH,slotAngle,geo});
+    const peak=buildSinSeries(cand.vTarget, cand).peak;
+    const item={cand,peak,signs:{tubeID,ringOD,ringGap0,bleedW,bleedH,slotAngle,geo}};
+    count++;
+    if(!minCase||peak.force<minCase.peak.force)minCase=item;
+    if(!maxCase||peak.force>maxCase.peak.force)maxCase=item;
+  });});});});});});});
+
+  const maxDevPct=nominal>0
+    ? Math.max(Math.abs(minCase.peak.force/nominal-1),Math.abs(maxCase.peak.force/nominal-1))*100
+    : Infinity;
+  return {
+    count, nominal, lower, upper, minCase, maxCase, maxDevPct,
+    pass:minCase.peak.force>=lower&&maxCase.peak.force<=upper
+  };
+}
+
+function renderRequirementAudit(data){
+  const el=$('requirementAudit');
+  if(!el)return;
+
+  const p=data.p;
+  const r=data.target;
+  const targetPass=r.force>=p.fTarget;
+  const slopePass=Number.isFinite(p.currentRiseSlope)&&Math.abs(p.currentRiseSlope-p.riseSlopeTarget)/Math.max(p.riseSlopeTarget,1)<=0.15;
+  const tol=analyzeTolerance(data);
+  const tolCls=tol.pass?'ok':'bad';
+  const targetCls=targetPass?'ok':'bad';
+  const slopeCls=slopePass?'ok':'warn';
+  const totalNominal=p.baseDamping+r.force;
+  const totalMin=p.baseDamping+tol.minCase.peak.force;
+  const totalMax=p.baseDamping+tol.maxCase.peak.force;
+
+  el.innerHTML=
+    '<div class="audit">'+
+    '<div class="audit-title">AUDI PPE Hydraulic rebound stop 要求校核</div>'+
+    '<div class="audit-text">要求解释：只在 v='+fmt(p.vTarget,3)+' m/s ramp 工况校核最大 HRS 附加力；总力目标为基础阻尼力 '+fmt(p.baseDamping,0)+' N + HRS 附加力 '+fmt(p.fTarget,0)+' N = '+fmt(p.totalTarget,0)+' N。</div>'+
+    '<table class="mini-table"><thead><tr><th>项目</th><th>计算值</th><th>目标/窗口</th><th>判断</th></tr></thead><tbody>'+
+    '<tr><td>0.524m/s HRS峰值</td><td>'+fmt(r.force,0)+' N</td><td>≥ '+fmt(p.fTarget,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'不足')+'</span></td></tr>'+
+    '<tr><td>总力峰值</td><td>'+fmt(totalNominal,0)+' N</td><td>'+fmt(p.totalTarget,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'不足')+'</span></td></tr>'+
+    '<tr><td>介入点</td><td>'+fmt(p.sOn,1)+' mm</td><td>5mm档位</td><td><span class="pill ok">OK</span></td></tr>'+
+    '<tr><td>左侧平均斜率</td><td>'+fmt(p.currentRiseSlope,1)+' N/mm</td><td>'+fmt(p.riseSlopeTarget,1)+' N/mm</td><td><span class="pill '+slopeCls+'">'+(slopePass?'接近':'需调整')+'</span></td></tr>'+
+    '<tr><td>生产公差性能波动</td><td>'+fmt(tol.maxDevPct,1)+'%</td><td>±'+fmt(p.perfTolPct,0)+'%</td><td><span class="pill '+tolCls+'">'+(tol.pass?'满足':'超差')+'</span></td></tr>'+
+    '</tbody></table>'+
+    '<div class="audit-text" style="margin-top:7px">公差扫描 '+tol.count+' 组最坏组合：HRS附加力最小 '+fmt(tol.minCase.peak.force,0)+' N，最大 '+fmt(tol.maxCase.peak.force,0)+' N；对应总力范围 '+fmt(totalMin,0)+'–'+fmt(totalMax,0)+' N。±'+fmt(p.perfTolPct,0)+'% 名义窗口为 '+fmt(tol.lower,0)+'–'+fmt(tol.upper,0)+' N。</div>'+
+    '<div class="audit-text" style="margin-top:6px">左侧目标包络使用平滑 smoothstep 从 0 增加到最大值，用于避免突增；实际物理曲线仍由泄流面积、Ring胀开和速度共同决定。</div>'+
+    '</div>';
+}
+
+/* ── Render all outputs ── */
+function render(data){
+  const p=data.p;
+
+  /* Key s-positions for vertical marker lines */
+  const sOnV   = p.sOn;
+  const sR9mid = p.sOn + p.r9Len*0.5;
+  const sR6end = p.sOn + p.r6Len;
+  const sR9end = p.sOn + p.r9Len;
+  const sMarkers=[
+    {x:sOnV,   label:'开始进入 s='+fmt(sOnV,1),   color:'#f59e0b', labelY:0},
+    {x:sR9mid, label:'R9 50% s='+fmt(sR9mid,1),  color:'#3b82f6', labelY:1},
+    {x:sR6end, label:'R6 0 s='+fmt(sR6end,1),    color:'#f59e0b', labelY:0},
+    {x:sR9end, label:'R9 0 s='+fmt(sR9end,1),    color:'#3b82f6', labelY:1},
+  ];
+
+  /* Build series with peak info for each chart */
+  const fsSeries=data.series.map(function(s){return{
+    name:s.name,
+    points:s.points.map(function(pt){return{x:pt.s,y:pt.force};}),
+    peak:{x:s.peak.s, y:s.peak.force},
+    peakText:s.name+' 峰值='+fmt(s.peak.force,0)+'N',
+    color:s.isTarget?'#2457c5':null
+  };}).concat([data.targetEnvelope]);
+  const fvSeries=data.series.map(function(s){return{
+    name:s.name,
+    points:s.points.map(function(pt){return{x:pt.v,y:pt.force};}),
+    peak:{x:s.peak.v, y:s.peak.force},
+    peakText:s.name+' 峰值='+fmt(s.peak.force,0)+'N'
+  };});
+  const openSeries=data.series.map(function(s){return{
+    name:s.name,
+    points:s.points.map(function(pt){return{x:pt.s,y:pt.expandRatio*100};}),
+    peak:{x:s.peak.s, y:s.peak.expandRatio*100},
+    peakText:s.name+' 峰值='+fmt(s.peak.expandRatio*100,1)+'%'
+  };});
+  const dpSeries=data.series.map(function(s){return{
+    name:s.name,
+    points:s.points.map(function(pt){return{x:pt.s,y:pt.dpMPa};}),
+    peak:{x:s.peak.s, y:s.peak.dpMPa},
+    peakText:s.name+' 峰值='+fmt(s.peak.dpMPa,2)+'MPa'
+  };});
+
+  drawChart('fsChart', fsSeries,
+    {xMax:p.strokeS,xDigits:0,yDigits:0,
+     xLabel:'复原拉伸位移 s / mm',yLabel:'HRS附加力 F / N',
+     targetY:p.fTarget, markers:sMarkers});
+
+  drawChart('fvChart', fvSeries,
+    {xMax:Math.max.apply(null,p.vList),xDigits:2,yDigits:0,
+     xLabel:'瞬时复原速度 v / m/s',yLabel:'HRS附加力 F / N',
+     targetY:p.fTarget});
+
+  drawChart('openChart', openSeries,
+    {xMax:p.strokeS,yMax:100,xDigits:0,yDigits:0,
+     xLabel:'复原拉伸位移 s / mm',yLabel:'Ring胀开比例 expandRatio / %',
+     markers:sMarkers});
+
+  drawChart('dpChart', dpSeries,
+    {xMax:p.strokeS,xDigits:0,yDigits:2,
+     xLabel:'复原拉伸位移 s / mm',yLabel:'等效压差 ΔP / MPa',
+     markers:sMarkers});
+
+  /* Pass/fail banner */
+  const pass=data.target.force>=p.fTarget;
+  $('passLine').innerHTML=
+    '<span class="pass-banner '+(pass?'ok':'bad')+'">'+(pass?'✔ 满足':'✘ 不足')+
+    '  v='+fmt(p.vTarget,3)+'m/s：HRS附加力 <b>'+fmt(data.target.force,0)+
+    'N</b>，总力 <b>'+fmt(p.baseDamping+data.target.force,0)+
+    'N</b>；目标总力 '+fmt(p.totalTarget,0)+'N</span>';
+  renderRequirementAudit(data);
+
+  /* KV summary */
+  const kvDefs=[
+    ['A_eff 环形面积',fmt(p.Aeff,1)+' mm²',false],
+    ['径向补偿间隙 c',fmt(p.clearance,3)+' mm',false],
+    ['Bleed 开口面积',fmt(p.bleedA,3)+' mm²',false],
+    ['初始环隙泄漏面积',fmt(p.leakStartA,3)+' mm²',false],
+    ['介入点/目标峰值',fmt(p.sOn,1)+' / '+fmt(p.targetPeakS,1)+' mm',true],
+    ['当前/目标左侧斜率',fmt(p.currentRiseSlope,1)+' / '+fmt(p.riseSlopeTarget,1)+' N/mm',false],
+    ['Ring 撑开阈值 p_close',fmt(Number.isFinite(p.pClose)?p.pClose:0,2)+' MPa',true],
+    ['R9 入口槽深 d₀',fmt(p.r9D0,3)+' mm',false],
+    ['R6 入口槽深 d₀',fmt(p.r6D0,3)+' mm',false],
+    ['强度安全系数 SF',fmt(p.SF,2)+'  (σθ='+fmt(p.sigmaMax,0)+' MPa)',p.SF>=2],
+  ];
+  $('summaryKvs').innerHTML=kvDefs.map(function(kv){
+    return '<div class="kv'+(kv[2]?' highlight':'')+'"><div class="kv-label">'+kv[0]+'</div><div class="kv-value">'+kv[1]+'</div></div>';
+  }).join('');
+
+  /* Results table */
+  const rows=data.series.map(function(s){
+    const r=s.peak;
+    const fcls=s.isTarget?(r.force>=p.fTarget?'ok':'bad'):'warn';
+    const ecls=r.expandRatio>=0.95?'ok':r.expandRatio>=0.5?'warn':'bad';
+    return '<tr>'+
+      '<td>'+s.name+'</td>'+
+      '<td>'+fmt(r.s,1)+'</td>'+
+      '<td>'+fmt(r.v,3)+'</td>'+
+      '<td>'+fmt(r.x,1)+'</td>'+
+      '<td><span class="pill '+fcls+'">'+fmt(r.force,0)+'</span></td>'+
+      '<td>'+fmt(r.sealRatio*100,1)+'%</td>'+
+      '<td><span class="pill '+ecls+'">'+fmt(r.expandRatio*100,1)+'%</span></td>'+
+      '<td>'+fmt(r.gapWidth,3)+'</td>'+
+      '<td>'+fmt(r.slotR9+r.slotR6,3)+'</td>'+
+      '<td>'+fmt(r.totalA,3)+'</td>'+
+      '<td>'+fmt(r.qLmin,2)+'</td>'+
+      '<td>'+fmt(r.dpMPa,2)+'</td>'+
+      '<td>'+fmt(r.stress,0)+'</td>'+
+      '<td><span class="pill '+ecls+'">'+r.state+'</span></td>'+
+      '</tr>';
+  }).join('');
+  $('resultTable').innerHTML=
+    '<table><thead><tr>'+
+    '<th>Sin峰速</th><th>峰力位移<br>s/mm</th><th>瞬时速度<br>m/s</th><th>进入深度<br>x/mm</th>'+
+    '<th>峰值力<br>N</th><th>密封比<br>sealRatio</th><th>胀开比<br>expandRatio</th>'+
+    '<th>端隙宽<br>g/mm</th><th>R9+R6槽<br>面积mm²</th><th>总泄流<br>面积mm²</th>'+
+    '<th>流量<br>L/min</th><th>压差<br>MPa</th><th>环向应力<br>MPa</th><th>状态</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+function calculate(){render(buildData());}
+$('calcBtn').addEventListener('click',calculate);
+window.addEventListener('load',calculate);
+window.addEventListener('resize',function(){try{var d=buildData();render(d);}catch(e){}});
+</script>
+</body>
+</html>
