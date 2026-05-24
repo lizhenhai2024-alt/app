@@ -1126,7 +1126,7 @@ function renderRequirementAudit(data){
     '<tr><td>生产公差性能波动</td><td>'+fmt(tol.maxDevPct,1)+'%</td><td>±'+fmt(p.perfTolPct,0)+'%</td><td><span class="pill '+tolCls+'">'+(tol.pass?'满足':'超差')+'</span></td></tr>'+
     '</tbody></table>'+
     '<div class="audit-text" style="margin-top:7px">公差扫描 '+tol.count+' 组最坏组合：HRS附加力最小 '+fmt(tol.minCase.peak.force,0)+' N，最大 '+fmt(tol.maxCase.peak.force,0)+' N；对应总力范围 '+fmt(totalMin,0)+'–'+fmt(totalMax,0)+' N。±'+fmt(p.perfTolPct,0)+'% 名义窗口为 '+fmt(tol.lower,0)+'–'+fmt(tol.upper,0)+' N。</div>'+
-    '<div class="audit-text" style="margin-top:6px">目标包络使用平滑 smoothstep 从 0 增加到最大值，用于避免突增；实际物理曲线由泄流面积、Ring胀开、ramp速度和压力建立过程共同决定。完整 firing 1/4 车模型还需质量、弹簧、安装点和主阀阻尼表。</div>'+
+    '<div class="audit-text" style="margin-top:6px">目标包络使用平滑 smoothstep 从 0 增加到最大值，用于避免突增；实际物理曲线由泄流面积、Ring胀开、ramp速度和压力建立过程共同决定。</div>'+
     '</div>';
 }
 
