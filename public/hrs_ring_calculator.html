@@ -143,8 +143,8 @@
         <div class="row"><label>套筒总长度 L<sub>tube</sub> / mm</label><input class="user" id="tubeL" type="number" value="52" step="0.1"></div>
         <div class="row"><label>导向座长度 L<sub>guide</sub> / mm</label><input class="user" id="guideL" type="number" value="7" step="0.1"></div>
         <div class="row"><label>入口到导向座距离 L<sub>tube</sub>−L<sub>guide</sub> / mm</label><input class="auto" id="entryToGuide" type="number" readonly></div>
-        <div class="row"><label>介入点 s<sub>start</sub> / mm（5mm档）</label><input class="user" id="sOnTarget" type="number" value="10" step="5"></div>
-        <div class="row"><label>5mm档后介入点 s<sub>on</sub> / mm</label><input class="auto" id="sOn" type="number" readonly></div>
+        <input id="sOnTarget" type="hidden" value="10">
+        <input id="sOn" type="hidden" readonly>
         <div class="row"><label>对应初始 Ring 到导向座距离 / mm</label><input class="auto" id="startToGuide" type="number" readonly></div>
         <div class="row"><label>复原拉伸总行程 S / mm</label><input class="user" id="strokeS" type="number" value="50" step="0.5"></div>
         <div class="row"><label>缓冲垫高度 / mm</label><input class="user" id="bufferH" type="number" value="6" step="0.1"></div>
@@ -196,9 +196,9 @@
         <div class="row"><label>基础阻尼力 F<sub>damp</sub> @v<sub>target</sub> / N</label><input class="user" id="baseDamping" type="number" value="0" step="50"></div>
         <div class="row"><label>HRS 附加力目标 ΔF<sub>HRS</sub> / N</label><input class="user" id="fTarget" type="number" value="3000" step="50"></div>
         <div class="row"><label>目标总力 F<sub>total</sub>=F<sub>damp</sub>+ΔF / N</label><input class="auto" id="totalTarget" type="number" readonly></div>
-        <div class="row"><label>左侧平均斜率目标 / N/mm</label><input class="user" id="riseSlopeTarget" type="number" value="150" step="10"></div>
+        <input id="riseSlopeTarget" type="hidden" value="150">
         <div class="row"><label>目标峰值位移 s<sub>peak,target</sub> / mm</label><input class="auto" id="targetPeakS" type="number" readonly></div>
-        <div class="row"><label>当前左侧平均斜率 / N/mm</label><input class="auto" id="currentRiseSlope" type="number" readonly></div>
+        <input id="currentRiseSlope" type="hidden" readonly>
         <div class="row"><label>HRS 有效腔长 L<sub>stop</sub> / mm</label><input class="user" id="hrsVolL" type="number" value="52" step="0.5"></div>
         <div class="row"><label>有效体积模量 β<sub>eff</sub> / MPa（含气油液）</label><input class="user" id="bulkMPa" type="number" value="350" step="10"></div>
         <div class="row"><label>油液密度 ρ / kg/m³</label><input class="user" id="rho" type="number" value="840" step="1"></div>
@@ -254,7 +254,7 @@
             <div class="row range"><label>leakFull 范围 / mm²</label><div class="range-cell"><input class="user" id="optLeakFullMin" type="number" value="0.05" step="0.01"><input class="user" id="optLeakFullMax" type="number" value="1.00" step="0.01"></div></div>
             <div class="row range"><label>K<sub>open</sub> 范围</label><div class="range-cell"><input class="user" id="optKopenMin" type="number" value="0.03" step="0.01"><input class="user" id="optKopenMax" type="number" value="0.30" step="0.01"></div></div>
             <button class="btn secondary" id="optCoeffBtn" type="button">优化紫色系数到目标窗口</button>
-            <div id="optimizeResult" class="opt-result">优化只在上方范围内搜索；不改变尺寸、槽几何和介入点。</div>
+            <div id="optimizeResult" class="opt-result">优化只在上方范围内搜索；不改变尺寸和槽几何。</div>
           </div>
         </details>
       </div>
@@ -741,10 +741,9 @@ function candidateScore(base, coeff, steps){
   const slope=peak.s>p.sOn ? peak.force/(peak.s-p.sOn) : Infinity;
   const tolBand=Math.max(p.fTarget*p.perfTolPct/100, p.fTarget*0.05, 1);
   const forceErr=(peak.force-p.fTarget)/tolBand;
-  const slopeErr=Number.isFinite(slope) ? (slope-p.riseSlopeTarget)/Math.max(p.riseSlopeTarget,1) : 10;
   const openPenalty=Math.max(0, 1-peak.openPressureRatio);
   const leakPenalty=Math.max(0, peak.radialGap/Math.max(p.clearance,0.001));
-  const loss=4*forceErr*forceErr + 0.65*slopeErr*slopeErr + 0.18*openPenalty*openPenalty + 0.08*leakPenalty*leakPenalty;
+  const loss=4*forceErr*forceErr + 0.18*openPenalty*openPenalty + 0.08*leakPenalty*leakPenalty;
   return {loss, p, coeff:Object.assign({}, coeff), peak, slope};
 }
 
@@ -875,15 +874,10 @@ function optimizeCoefficients(){
 
   const bounds=targetBounds(data.p);
   const inWindow=data.target.force>=bounds.lower&&data.target.force<=bounds.upper;
-  const slopeErrPct=Math.abs(data.p.currentRiseSlope-data.p.riseSlopeTarget)/Math.max(data.p.riseSlopeTarget,1)*100;
-  const suggestedSOn=clamp(Math.round((data.target.s-data.p.fTarget/Math.max(data.p.riseSlopeTarget,1e-9))/5)*5, 0, data.p.strokeS-5);
-  const slopeHint=Math.abs(data.p.currentRiseSlope-data.p.riseSlopeTarget)/Math.max(data.p.riseSlopeTarget,1)>0.15
-    ? '<br><span class="pill warn">斜率提示</span> 只调系数难以改变峰值位置；若目标斜率为 '+fmt(data.p.riseSlopeTarget,1)+' N/mm，可把介入点 '+fmt(suggestedSOn,0)+' mm（5mm档）作为联动优化初值，再重新匹配系数。'
-    : '';
   $('optimizeResult').innerHTML=
     '<b>优化完成：</b> HRS峰值 '+fmt(data.target.force,0)+' N，目标窗口 '+fmt(bounds.lower,0)+'–'+fmt(bounds.upper,0)+' N，'+
     (inWindow?'<span class="pill ok">进入窗口</span>':'<span class="pill bad">范围内未进入窗口</span>')+
-    '；左侧斜率 '+fmt(data.p.currentRiseSlope,1)+' N/mm（偏差 '+fmt(slopeErrPct,1)+'%）。<br>'+
+    '。<br>'+
     '系数：k_gap='+fmt(data.p.ringGapK,3)+
     '，k_expand='+fmt(data.p.ringGapExpandK,3)+
     '，k_leak='+fmt(data.p.leakK,4)+
@@ -891,7 +885,7 @@ function optimizeCoefficients(){
     '，K_open='+fmt(data.p.kopen,4)+'。<br>'+
     '约束范围：'+formatBounds(optBounds)+'。<br>'+
     '撑开压比 '+fmt(data.target.openPressureRatio,2)+
-    '，残余径向间隙 '+fmt(data.target.radialGap,3)+' mm。'+slopeHint;
+    '，残余径向间隙 '+fmt(data.target.radialGap,3)+' mm。';
 }
 
 /* ── Hi-DPI Canvas chart ──
@@ -1069,11 +1063,9 @@ function renderRequirementAudit(data){
   const r=data.target;
   const bounds=targetBounds(p);
   const targetPass=r.force>=bounds.lower&&r.force<=bounds.upper;
-  const slopePass=Number.isFinite(p.currentRiseSlope)&&Math.abs(p.currentRiseSlope-p.riseSlopeTarget)/Math.max(p.riseSlopeTarget,1)<=0.15;
   const tol=analyzeTolerance(data);
   const tolCls=tol.pass?'ok':'bad';
   const targetCls=targetPass?'ok':'bad';
-  const slopeCls=slopePass?'ok':'warn';
   const openCls=r.expandRatio>=0.95?'ok':r.expandRatio>=0.50?'warn':'bad';
   const totalNominal=p.baseDamping+r.force;
   const totalMin=p.baseDamping+tol.minCase.peak.force;
@@ -1081,18 +1073,16 @@ function renderRequirementAudit(data){
 
   el.innerHTML=
     '<div class="audit">'+
-    '<div class="audit-title">AUDI PPE Hydraulic rebound stop 要求校核</div>'+
+    '<div class="audit-title">HRS 目标与公差校核</div>'+
     '<div class="audit-text">要求解释：只在 v='+fmt(p.vTarget,3)+' m/s ramp 工况校核最大 HRS 附加力；当前目标算法为 '+(p.targetModel==='transient'?'HRS腔瞬态压力':'稳态流动')+'。总力目标为基础阻尼力 '+fmt(p.baseDamping,0)+' N + HRS 附加力 '+fmt(p.fTarget,0)+' N = '+fmt(p.totalTarget,0)+' N。</div>'+
     '<table class="mini-table"><thead><tr><th>项目</th><th>计算值</th><th>目标/窗口</th><th>判断</th></tr></thead><tbody>'+
     '<tr><td>0.524m/s HRS峰值</td><td>'+fmt(r.force,0)+' N</td><td>'+fmt(bounds.lower,0)+'–'+fmt(bounds.upper,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'超出')+'</span></td></tr>'+
     '<tr><td>总力峰值</td><td>'+fmt(totalNominal,0)+' N</td><td>'+fmt(bounds.totalLower,0)+'–'+fmt(bounds.totalUpper,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'超出')+'</span></td></tr>'+
-    '<tr><td>介入点</td><td>'+fmt(p.sOn,1)+' mm</td><td>5mm档位</td><td><span class="pill ok">OK</span></td></tr>'+
-    '<tr><td>左侧平均斜率</td><td>'+fmt(p.currentRiseSlope,1)+' N/mm</td><td>'+fmt(p.riseSlopeTarget,1)+' N/mm</td><td><span class="pill '+slopeCls+'">'+(slopePass?'接近':'需调整')+'</span></td></tr>'+
     '<tr><td>低压撑开/径向间隙</td><td>压比 '+fmt(r.openPressureRatio,2)+'，c_eff '+fmt(r.radialGap,3)+' mm</td><td>压比≥1，c_eff≈0</td><td><span class="pill '+openCls+'">'+r.state+'</span></td></tr>'+
     '<tr><td>生产公差性能波动</td><td>'+fmt(tol.maxDevPct,1)+'%</td><td>±'+fmt(p.perfTolPct,0)+'%</td><td><span class="pill '+tolCls+'">'+(tol.pass?'满足':'超差')+'</span></td></tr>'+
     '</tbody></table>'+
     '<div class="audit-text" style="margin-top:7px">公差扫描 '+tol.count+' 组最坏组合：HRS附加力最小 '+fmt(tol.minCase.peak.force,0)+' N，最大 '+fmt(tol.maxCase.peak.force,0)+' N；对应总力范围 '+fmt(totalMin,0)+'–'+fmt(totalMax,0)+' N。±'+fmt(p.perfTolPct,0)+'% 名义窗口为 '+fmt(tol.lower,0)+'–'+fmt(tol.upper,0)+' N。</div>'+
-    '<div class="audit-text" style="margin-top:6px">左侧目标包络使用平滑 smoothstep 从 0 增加到最大值，用于避免突增；实际物理曲线由泄流面积、Ring胀开、ramp速度和压力建立过程共同决定。完整 firing 1/4 车模型还需质量、弹簧、安装点和主阀阻尼表。</div>'+
+    '<div class="audit-text" style="margin-top:6px">目标包络使用平滑 smoothstep 从 0 增加到最大值，用于避免突增；实际物理曲线由泄流面积、Ring胀开、ramp速度和压力建立过程共同决定。完整 firing 1/4 车模型还需质量、弹簧、安装点和主阀阻尼表。</div>'+
     '</div>';
 }
 
@@ -1177,8 +1167,6 @@ function render(data){
     ['径向补偿间隙 c',fmt(p.clearance,3)+' mm',false],
     ['Bleed 开口面积',fmt(p.bleedA,3)+' mm²',false],
     ['初始环隙泄漏面积',fmt(p.leakStartA,3)+' mm²',false],
-    ['介入点/目标峰值',fmt(p.sOn,1)+' / '+fmt(p.targetPeakS,1)+' mm',true],
-    ['当前/目标左侧斜率',fmt(p.currentRiseSlope,1)+' / '+fmt(p.riseSlopeTarget,1)+' N/mm',false],
     ['Ring 撑开阈值 p_close',fmt(Number.isFinite(p.pClose)?p.pClose:0,2)+' MPa',true],
     ['目标撑开压比',fmt(data.target.openPressureRatio,2)+' × p_close',data.target.expandRatio>=0.95],
     ['目标残余径向间隙',fmt(data.target.radialGap,3)+' mm',data.target.expandRatio>=0.95],
