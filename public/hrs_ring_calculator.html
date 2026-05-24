@@ -123,6 +123,8 @@
       <div class="card">
         <div class="card-title">1. HRS 基础结构参数</div>
         <div class="row"><label>活塞杆直径 d<sub>rod</sub> / mm</label><input class="user" id="rodD" type="number" value="25" step="0.1"></div>
+        <div class="row"><label>导向座衬套内径 D<sub>bush</sub> / mm</label><input class="user" id="guideBushID" type="number" value="25.10" step="0.01"></div>
+        <div class="row"><label>导向座-杆径向间隙 a<sub>rg</sub> / mm</label><input class="auto" id="rgGap" type="number" readonly></div>
         <div class="row"><label>套筒内径 D<sub>tube</sub> (=密封直径) / mm</label><input class="user" id="tubeID" type="number" value="32.5" step="0.01"></div>
         <div class="row"><label>套筒入口内径 D<sub>entry</sub> / mm</label><input class="user" id="entryID" type="number" value="35" step="0.01"></div>
         <div class="row"><label>套筒内壁粗糙度 Rz / µm</label><input class="user" id="tubeRz" type="number" value="15" step="1"></div>
@@ -145,7 +147,7 @@
       <div class="card">
         <div class="card-title">2. 行程位置参数</div>
         <div class="row"><label>套筒总长度 L<sub>tube</sub> / mm</label><input class="user" id="tubeL" type="number" value="52" step="0.1"></div>
-        <div class="row"><label>导向座长度 L<sub>guide</sub> / mm</label><input class="user" id="guideL" type="number" value="7" step="0.1"></div>
+        <div class="row"><label>导向座衬套长度 L<sub>guide</sub> / mm</label><input class="user" id="guideL" type="number" value="12" step="0.1"></div>
         <div class="row"><label>入口到导向座距离 L<sub>tube</sub>−L<sub>guide</sub> / mm</label><input class="auto" id="entryToGuide" type="number" readonly></div>
         <input id="sOnTarget" type="hidden" value="10">
         <input id="sOn" type="hidden" readonly>
@@ -199,15 +201,11 @@
         <div class="row"><label>基础阻尼力 F<sub>damp</sub> @v<sub>target</sub> / N</label><input class="user" id="baseDamping" type="number" value="0" step="50"></div>
         <div class="row"><label>HRS 附加力目标 ΔF<sub>HRS</sub> / N</label><input class="user" id="fTarget" type="number" value="3000" step="50"></div>
         <div class="row"><label>目标总力 F<sub>total</sub>=F<sub>damp</sub>+ΔF / N</label><input class="auto" id="totalTarget" type="number" readonly></div>
-        <input id="riseSlopeTarget" type="hidden" value="150">
-        <div class="row"><label>目标峰值位移 s<sub>peak,target</sub> / mm</label><input class="auto" id="targetPeakS" type="number" readonly></div>
-        <input id="currentRiseSlope" type="hidden" readonly>
         <div class="row"><label>HRS 有效腔长 L<sub>stop</sub> / mm</label><input class="user" id="hrsVolL" type="number" value="52" step="0.5"></div>
         <div class="row"><label>有效体积模量 β<sub>eff</sub> / MPa（含气油液）</label><input class="user" id="bulkMPa" type="number" value="350" step="10"></div>
         <div class="row"><label>油液密度 ρ / kg/m³</label><input class="user" id="rho" type="number" value="840" step="1"></div>
         <div class="row"><label>动粘度 ν / mm²/s</label><input class="user" id="nu" type="number" value="21" step="0.1"></div>
-        <div class="row"><label>导向间隙泄漏 a<sub>rg</sub> / mm</label><input class="adv" id="rgGap" type="number" value="0" step="0.001"></div>
-        <div class="row"><label>导向间隙有效长度 L<sub>rg</sub> / mm</label><input class="adv" id="rgLen" type="number" value="7" step="0.1"></div>
+        <div class="row"><label>导向间隙有效长度 L<sub>rg</sub> / mm</label><input class="auto" id="rgLen" type="number" readonly></div>
         <div class="row"><label>流量系数 C<sub>d</sub></label><input class="user" id="cd" type="number" value="0.65" step="0.01"></div>
         <div class="row"><label>Sin 峰值速度 1 / m/s</label><input class="user" id="v1" type="number" value="0.3" step="0.01"></div>
         <div class="row"><label>Sin 峰值速度 2 / m/s</label><input class="user" id="v2" type="number" value="0.6" step="0.01"></div>
@@ -220,6 +218,8 @@
           <summary>5. 尺寸和形位公差校核</summary>
           <div class="detail-body">
             <div class="row"><label>性能目标公差 / %</label><input class="user" id="perfTolPct" type="number" value="10" step="1"></div>
+            <div class="row range"><label>活塞杆直径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devRodDLow" type="number" value="-0.02" step="0.005"><input class="user" id="devRodDHigh" type="number" value="0.00" step="0.005"></div></div>
+            <div class="row range"><label>导向座衬套内径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devGuideBushIDLow" type="number" value="0.00" step="0.005"><input class="user" id="devGuideBushIDHigh" type="number" value="0.05" step="0.005"></div></div>
             <div class="row range"><label>套筒内径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devTubeIDLow" type="number" value="0.09" step="0.01"><input class="user" id="devTubeIDHigh" type="number" value="0.13" step="0.01"></div></div>
             <div class="row range"><label>入口内径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devEntryIDLow" type="number" value="-0.10" step="0.01"><input class="user" id="devEntryIDHigh" type="number" value="0.00" step="0.01"></div></div>
             <div class="row range"><label>浮动环外径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devRingODLow" type="number" value="-0.10" step="0.01"><input class="user" id="devRingODHigh" type="number" value="0.10" step="0.01"></div></div>
@@ -395,7 +395,8 @@ function slotPair(x, p){
 /* ── Read all parameters, compute derived values ── */
 function readParams(){
   const p={
-    rodD:num('rodD'), tubeID:num('tubeID'), entryID:num('entryID'), tubeRz:num('tubeRz'),
+    rodD:num('rodD'), guideBushID:num('guideBushID'),
+    tubeID:num('tubeID'), entryID:num('entryID'), tubeRz:num('tubeRz'),
     ringOD:num('ringOD'), ringID:num('ringID'),
     ringH:num('ringH'), ringTrad:num('ringTrad'),
     eMod:num('eMod'), yieldMPa:num('yieldMPa'), pMax:num('pMax'),
@@ -409,10 +410,12 @@ function readParams(){
     slotExp:num('slotExp'),
     vTarget:num('vTarget'),
     baseDamping:num('baseDamping'), fTarget:num('fTarget'),
-    riseSlopeTarget:num('riseSlopeTarget'), hrsVolL:num('hrsVolL'), bulkMPa:num('bulkMPa'),
+    hrsVolL:num('hrsVolL'), bulkMPa:num('bulkMPa'),
     rho:num('rho'), nu:num('nu'), rgGap:num('rgGap'), rgLen:num('rgLen'), cd:num('cd'),
     vList:[num('v1'),num('v2'),num('v3')],
     perfTolPct:num('perfTolPct'),
+    devRodDLow:num('devRodDLow'), devRodDHigh:num('devRodDHigh'),
+    devGuideBushIDLow:num('devGuideBushIDLow'), devGuideBushIDHigh:num('devGuideBushIDHigh'),
     devTubeIDLow:num('devTubeIDLow'), devTubeIDHigh:num('devTubeIDHigh'),
     devEntryIDLow:num('devEntryIDLow'), devEntryIDHigh:num('devEntryIDHigh'),
     devRingODLow:num('devRingODLow'), devRingODHigh:num('devRingODHigh'),
@@ -427,6 +430,8 @@ function readParams(){
 
   // Derived geometry
   p.ringTgeom=(p.ringOD-p.ringID)/2;
+  p.rgGap=Math.max((p.guideBushID-p.rodD)/2, 0);
+  p.rgLen=p.guideL;
   p.clearance=Math.max((p.tubeID-p.ringOD)/2, 0);
   p.rMean=(p.ringOD+p.ringID)/4;
   p.geoEffectiveTol=Math.max(p.geoPosTol, p.ringODRoundness/2, p.ringFacePerp/2);
@@ -437,7 +442,6 @@ function readParams(){
   p.startToGuide=p.entryToGuide+p.sOn;
   p.ringAbove=p.bufferH+p.seatH-p.ringH;
   p.totalTarget=p.baseDamping+p.fTarget;
-  p.targetPeakS=p.sOn+p.fTarget/Math.max(p.riseSlopeTarget,1e-9);
 
   // Bleed area
   p.bleedA=p.bleedN*p.bleedW*p.bleedH;
@@ -463,6 +467,8 @@ function readParams(){
 
   // Write auto-computed display values
   setv('ringTgeom', p.ringTgeom, 3);
+  setv('rgGap', p.rgGap, 3);
+  setv('rgLen', p.rgLen, 2);
   setv('radialStiffRelDisp', p.radialStiffRel, 3);
   setv('heightLeakFactorDisp', p.heightLeakFactor, 3);
   setv('clearanceDisp', p.clearance, 3);
@@ -472,7 +478,6 @@ function readParams(){
   setv('sOn', p.sOn, 2);
   setv('ringAbove', p.ringAbove, 2);
   setv('totalTarget', p.totalTarget, 0);
-  setv('targetPeakS', p.targetPeakS, 2);
   setv('bleedA', p.bleedA, 3);
   setv('leakStartADisp', p.leakStartA, 3);
   setv('r9D0Disp', p.r9D0, 3);
@@ -638,30 +643,6 @@ function buildSinSeries(vPeak, p, name, stepOverride){
   return {name:name||fmt(vPeak,1)+' m/s', vPeak, points:pts, peak};
 }
 
-function buildTargetEnvelope(p){
-  const pts=[];
-  const steps=160;
-  const sPeak=clamp(p.targetPeakS, p.sOn+1e-6, p.strokeS);
-  for(let i=0;i<=steps;i++){
-    const s=p.strokeS*i/steps;
-    let y=0;
-    if(s>p.sOn){
-      const u=clamp((s-p.sOn)/(sPeak-p.sOn),0,1);
-      // Smoothstep keeps the force increase harmonic instead of abrupt.
-      y=p.fTarget*(u*u*(3-2*u));
-    }
-    pts.push({x:s,y});
-  }
-  return {
-    name:'目标包络',
-    points:pts,
-    peak:{x:sPeak,y:p.fTarget},
-    peakText:'目标 '+fmt(p.fTarget,0)+'N',
-    color:'#ef4444',
-    dash:true
-  };
-}
-
 /* ── Build all data ── */
 function buildData(){
   const p=readParams();
@@ -674,9 +655,7 @@ function buildData(){
   );
   // Requirement check: only the maximum HRS additional force at target Sin peak speed is compared with 3000N.
   const target=targetSeries.peak;
-  p.currentRiseSlope=target.s>p.sOn ? target.force/(target.s-p.sOn) : Infinity;
-  setv('currentRiseSlope', p.currentRiseSlope, 1);
-  return {p, series, target, targetEnvelope:buildTargetEnvelope(p)};
+  return {p, series, target};
 }
 
 function targetBounds(p){
@@ -953,6 +932,8 @@ function drawChart(id, series, opt){
 
 function recalcParams(c, clearanceBias){
   c.ringTgeom=(c.ringOD-c.ringID)/2;
+  c.rgGap=Math.max((c.guideBushID-c.rodD)/2, 0);
+  c.rgLen=c.guideL;
   c.clearance=Math.max((c.tubeID-c.ringOD)/2+(clearanceBias||0), 0);
   c.rMean=(c.ringOD+c.ringID)/4;
   c.geoEffectiveTol=Math.max(c.geoPosTol, c.ringODRoundness/2, c.ringFacePerp/2);
@@ -974,6 +955,8 @@ function recalcParams(c, clearanceBias){
 
 function toleranceVariant(p, signs){
   const c=Object.assign({}, p);
+  c.rodD=signs.rodD;
+  c.guideBushID=signs.guideBushID;
   c.tubeID=signs.tubeID;
   c.entryID=signs.entryID;
   c.ringOD=signs.ringOD;
@@ -997,6 +980,8 @@ function analyzeTolerance(data){
   let minCase=null, maxCase=null, count=0;
   const lowSeeds=[];
   const highSeeds=[];
+  const rodDVals=tolPair(p.rodD,p.devRodDLow,p.devRodDHigh,0.1);
+  const guideBushIDVals=tolPair(p.guideBushID,p.devGuideBushIDLow,p.devGuideBushIDHigh,0.1);
   const tubeIDVals=tolPair(p.tubeID,p.devTubeIDLow,p.devTubeIDHigh,0.1);
   const ringODVals=tolPair(p.ringOD,p.devRingODLow,p.devRingODHigh,0.1);
   const ringIDVals=tolPair(p.ringID,p.devRingIDLow,p.devRingIDHigh,0.1);
@@ -1005,9 +990,11 @@ function analyzeTolerance(data){
   function keepSeed(list, item, dir){
     list.push(item);
     list.sort(function(a,b){return dir*(a.peak.force-b.peak.force);});
-    if(list.length>6)list.length=6;
+    if(list.length>4)list.length=4;
   }
 
+  rodDVals.forEach(function(rodD){
+  guideBushIDVals.forEach(function(guideBushID){
   tubeIDVals.forEach(function(tubeID){
   ringODVals.forEach(function(ringOD){
   ringIDVals.forEach(function(ringID){
@@ -1017,13 +1004,13 @@ function analyzeTolerance(data){
   signs.forEach(function(bleedH){
   signs.forEach(function(slotAngle){
   signs.forEach(function(geo){
-    const cand=toleranceVariant(p,{tubeID,entryID:p.entryID,ringOD,ringID,ringH,ringGap0,bleedW,bleedH,slotAngle,geo});
-    const peak=buildSinSeries(cand.vTarget, cand, 'tol', 40).peak;
-    const item={cand,peak,signs:{tubeID,entryID:p.entryID,ringOD,ringID,ringH,ringGap0,bleedW,bleedH,slotAngle,geo}};
+    const cand=toleranceVariant(p,{rodD,guideBushID,tubeID,entryID:p.entryID,ringOD,ringID,ringH,ringGap0,bleedW,bleedH,slotAngle,geo});
+    const peak=buildSinSeries(cand.vTarget, cand, 'tol', 12).peak;
+    const item={cand,peak,signs:{rodD,guideBushID,tubeID,entryID:p.entryID,ringOD,ringID,ringH,ringGap0,bleedW,bleedH,slotAngle,geo}};
     count++;
     keepSeed(lowSeeds, item, 1);
     keepSeed(highSeeds, item, -1);
-  });});});});});});});});});
+  });});});});});});});});});});});
 
   lowSeeds.concat(highSeeds).forEach(function(item){
     const peak=buildSinSeries(item.cand.vTarget, item.cand, 'tol').peak;
@@ -1068,7 +1055,7 @@ function renderRequirementAudit(data){
     '<tr><td>生产公差性能波动</td><td>'+fmt(tol.maxDevPct,1)+'%</td><td>±'+fmt(p.perfTolPct,0)+'%</td><td><span class="pill '+tolCls+'">'+(tol.pass?'满足':'超差')+'</span></td></tr>'+
     '</tbody></table>'+
     '<div class="audit-text" style="margin-top:7px">公差扫描 '+tol.count+' 组最坏组合：HRS附加力最小 '+fmt(tol.minCase.peak.force,0)+' N，最大 '+fmt(tol.maxCase.peak.force,0)+' N；对应总力范围 '+fmt(totalMin,0)+'–'+fmt(totalMax,0)+' N。±'+fmt(p.perfTolPct,0)+'% 名义窗口为 '+fmt(tol.lower,0)+'–'+fmt(tol.upper,0)+' N。</div>'+
-    '<div class="audit-text" style="margin-top:6px">目标包络使用平滑 smoothstep 从 0 增加到最大值，用于避免突增；实际物理曲线由泄流面积、Ring胀开、Sin速度和压力平衡共同决定。</div>'+
+    '<div class="audit-text" style="margin-top:6px">图中只保留一个目标：HRS附加力目标水平线；实际物理曲线由泄流面积、Ring胀开、Sin速度和压力平衡共同决定。</div>'+
     '</div>';
 }
 
@@ -1095,7 +1082,7 @@ function render(data){
     peak:{x:s.peak.s, y:s.peak.force},
     peakText:s.name+' 峰值='+fmt(s.peak.force,0)+'N',
     color:s.isTarget?'#2457c5':null
-  };}).concat([data.targetEnvelope]);
+  };});
   const fvSeries=data.series.map(function(s){return{
     name:s.name,
     points:s.points.map(function(pt){return{x:pt.v,y:pt.force};}),
@@ -1150,6 +1137,7 @@ function render(data){
   /* KV summary */
   const kvDefs=[
     ['A_eff 环形面积',fmt(p.Aeff,1)+' mm²',false],
+    ['导向座-杆径向间隙',fmt(p.rgGap,3)+' mm  / L='+fmt(p.rgLen,1)+' mm',p.rgGap>0],
     ['径向补偿间隙 c',fmt(p.clearance,3)+' mm',false],
     ['套筒入口/粗糙度',fmt(p.entryID,2)+' mm / Rz'+fmt(p.tubeRz,0),false],
     ['径向厚度 t³相对刚度',fmt(p.radialStiffRel,2)+' ×',true],
