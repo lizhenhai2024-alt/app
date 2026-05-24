@@ -1014,15 +1014,17 @@ function drawChart(id, series, opt){
     s.points.forEach(function(pt){const xx=sx(pt.x),yy=sy(pt.y);if(first){ctx.moveTo(xx,yy);first=false;}else ctx.lineTo(xx,yy);});
     ctx.stroke();
     ctx.setLineDash([]);
-    /* Peak annotation: filled dot + text label */
+    /* Peak annotation: optional filled dot + text label */
     if(s.peak&&s.peakText){
       const px=sx(s.peak.x), py=sy(s.peak.y);
-      ctx.beginPath();ctx.arc(px,py,4.5,0,Math.PI*2);
-      ctx.fillStyle='#ffffff';ctx.fill();
-      ctx.beginPath();ctx.arc(px,py,3.5,0,Math.PI*2);
-      ctx.fillStyle=color;ctx.fill();
-      ctx.beginPath();ctx.arc(px,py,4.5,0,Math.PI*2);
-      ctx.strokeStyle=color;ctx.lineWidth=1.2;ctx.stroke();
+      if(!s.noPeakDot){
+        ctx.beginPath();ctx.arc(px,py,4.5,0,Math.PI*2);
+        ctx.fillStyle='#ffffff';ctx.fill();
+        ctx.beginPath();ctx.arc(px,py,3.5,0,Math.PI*2);
+        ctx.fillStyle=color;ctx.fill();
+        ctx.beginPath();ctx.arc(px,py,4.5,0,Math.PI*2);
+        ctx.strokeStyle=color;ctx.lineWidth=1.2;ctx.stroke();
+      }
       const nearRight=(px > pl.r-115);
       ctx.font='bold 10px Microsoft YaHei,Arial';
       ctx.fillStyle=color;
@@ -1181,25 +1183,33 @@ function render(data){
     points:s.points.map(function(pt){return{x:pt.s,y:pt.force};}),
     peak:{x:s.peak.s, y:s.peak.force},
     peakText:s.name+' 峰值='+fmt(s.peak.force,0)+'N',
-    color:s.isTarget?'#2457c5':null
+    color:s.isTarget?'#2457c5':null,
+    dash:!!s.isTarget,
+    noPeakDot:!!s.isTarget
   };}).concat([data.targetEnvelope]);
   const fvSeries=data.series.map(function(s){return{
     name:s.name,
     points:s.points.map(function(pt){return{x:pt.v,y:pt.force};}),
     peak:{x:s.peak.v, y:s.peak.force},
-    peakText:s.name+' 峰值='+fmt(s.peak.force,0)+'N'
+    peakText:s.name+' 峰值='+fmt(s.peak.force,0)+'N',
+    dash:!!s.isTarget,
+    noPeakDot:!!s.isTarget
   };});
   const openSeries=data.series.map(function(s){return{
     name:s.name,
     points:s.points.map(function(pt){return{x:pt.s,y:pt.expandRatio*100};}),
     peak:{x:s.peak.s, y:s.peak.expandRatio*100},
-    peakText:s.name+' 峰值='+fmt(s.peak.expandRatio*100,1)+'%'
+    peakText:s.name+' 峰值='+fmt(s.peak.expandRatio*100,1)+'%',
+    dash:!!s.isTarget,
+    noPeakDot:!!s.isTarget
   };});
   const dpSeries=data.series.map(function(s){return{
     name:s.name,
     points:s.points.map(function(pt){return{x:pt.s,y:pt.dpMPa};}),
     peak:{x:s.peak.s, y:s.peak.dpMPa},
-    peakText:s.name+' 峰值='+fmt(s.peak.dpMPa,2)+'MPa'
+    peakText:s.name+' 峰值='+fmt(s.peak.dpMPa,2)+'MPa',
+    dash:!!s.isTarget,
+    noPeakDot:!!s.isTarget
   };});
 
   drawChart('fsChart', fsSeries,
