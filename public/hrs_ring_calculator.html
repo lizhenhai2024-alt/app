@@ -167,7 +167,7 @@
         <div class="section-sub">Ring 开口端隙（需实测/标定）</div>
         <div class="row"><label>自由开口端隙 g<sub>0</sub> / mm　<span style="font-weight:400;color:#6b7280">（实测Ring自由状态端隙）</span></label><input class="user" id="ringGap0" type="number" value="0.20" step="0.01"></div>
         <div class="row"><label>端隙几何有效系数 k<sub>gap</sub>　<span style="font-weight:400;color:#6b7280">（垂直贯通=1.0；图示斜切/圆角/遮挡建议0.3–0.8）</span></label><input class="adv" id="ringGapK" type="number" value="0.60" step="0.05"></div>
-        <div class="row"><label>胀开后端隙增量系数 k<sub>expand</sub>　<span style="font-weight:400;color:#6b7280">（完全贴壁时Δg≈k×2πc；有止口可降低）</span></label><input class="adv" id="ringGapExpandK" type="number" value="1.00" step="0.05"></div>
+        <div class="row"><label>胀开后端隙增量系数 k<sub>expand</sub>　<span style="font-weight:400;color:#6b7280">（自由垂直开口≈0.8–1.0；图示斜切/止口建议0.4–0.8）</span></label><input class="adv" id="ringGapExpandK" type="number" value="0.60" step="0.05"></div>
 
         <div class="section-sub">初始环隙泄漏（Ring未贴壁，需标定）</div>
         <div class="row"><label>初始环隙泄漏系数 k<sub>leak</sub>　<span style="font-weight:400;color:#6b7280">（有效截面比，需标定）</span></label><input class="adv" id="leakK" type="number" value="0.15" step="0.01"></div>
@@ -253,7 +253,7 @@
             </p>
             <div class="section-sub">优化约束范围（min / max）</div>
             <div class="row range"><label>k<sub>gap</sub> 范围</label><div class="range-cell"><input class="user" id="optRingGapKMin" type="number" value="0.30" step="0.01"><input class="user" id="optRingGapKMax" type="number" value="0.80" step="0.01"></div></div>
-            <div class="row range"><label>k<sub>expand</sub> 范围</label><div class="range-cell"><input class="user" id="optRingGapExpandKMin" type="number" value="0.30" step="0.01"><input class="user" id="optRingGapExpandKMax" type="number" value="1.00" step="0.01"></div></div>
+            <div class="row range"><label>k<sub>expand</sub> 范围</label><div class="range-cell"><input class="user" id="optRingGapExpandKMin" type="number" value="0.40" step="0.01"><input class="user" id="optRingGapExpandKMax" type="number" value="0.80" step="0.01"></div></div>
             <div class="row range"><label>k<sub>leak</sub> 范围</label><div class="range-cell"><input class="user" id="optLeakKMin" type="number" value="0.05" step="0.01"><input class="user" id="optLeakKMax" type="number" value="0.30" step="0.01"></div></div>
             <div class="row range"><label>leakFull 范围 / mm²</label><div class="range-cell"><input class="user" id="optLeakFullMin" type="number" value="0.05" step="0.01"><input class="user" id="optLeakFullMax" type="number" value="1.00" step="0.01"></div></div>
             <div class="row range"><label>K<sub>open</sub> 范围</label><div class="range-cell"><input class="user" id="optKopenMin" type="number" value="0.03" step="0.01"><input class="user" id="optKopenMax" type="number" value="0.30" step="0.01"></div></div>
@@ -274,7 +274,7 @@
             ④ <b>槽面积（圆弧段）</b>：d(x) = d₀·(1−x/L)^m，A_seg = R²·arccos[(R−d)/R] − (R−d)·√(2Rd−d²)，A_groove = N·A_seg。<br>
             ⑤ <b>低压撑开</b>：p<sub>close</sub> = K<sub>open</sub>·E·t<sub>rad</sub>·c/r²·(t<sub>rad</sub>/t<sub>ref</sub>)²；openRatio = ΔP·sealRatio/p<sub>close</sub>；expandRatio = clamp(openRatio<sup>1.15</sup>, 0, 1)。<br>
             ⑥ <b>径向间隙关闭</b>：c<sub>eff</sub> = c·(1−expandRatio)，A<sub>radial</sub> = π·D·c<sub>eff</sub>·k<sub>leak</sub>·sealRatio；低压力撑不开时该泄漏保留。<br>
-            ⑦ <b>端隙更新</b>：g = g₀ + k<sub>expand</sub>·2πc·expandRatio；图示非垂直开口用 k<sub>gap</sub> 把斜切/圆角/遮挡折算为等效通流面积。<br>
+            ⑦ <b>端隙更新</b>：g = g₀ + k<sub>expand</sub>·2πc·expandRatio；k<sub>expand</sub> 表示理论圆周增量实际转化为开口端隙的比例，受端口斜切、止口、摩擦卡滞和局部约束影响。图示非垂直开口用 k<sub>gap</sub> 把斜切/圆角/遮挡折算为等效通流面积。<br>
             ⑧ <b>高度影响</b>：H<sub>ring</sub> 控制 sealRatio 的建立长度，同时 A<sub>gap</sub>=k<sub>gap</sub>·H<sub>ring</sub>·g·sealRatio；H 越大，端隙泄流面积越大，低进入深度起压越慢。<br>
             ⑨ <b>总泄流面积</b>：A<sub>total</sub> = A<sub>bleed</sub> + A<sub>gap</sub> + A<sub>R9</sub> + A<sub>R6</sub> + A<sub>entry</sub> + A<sub>radial</sub> + A<sub>residual</sub>。<br>
             ⑩ <b>稳态附加力</b>：求解 Q<sub>in</sub> = Q<sub>orifice</sub> + Q<sub>rg</sub> 得到 ΔP；无导向间隙泄漏时等价于 ΔP = ½ρ(Q<sub>in</sub>/C<sub>d</sub>/A<sub>total</sub>)²。F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
@@ -789,7 +789,7 @@ function clampCoeff(id, value, bounds){
 
 const coeffDefs={
   ringGapK:{minId:'optRingGapKMin',maxId:'optRingGapKMax',min:0.30,max:0.80,digits:3,mode:'log',label:'k_gap'},
-  ringGapExpandK:{minId:'optRingGapExpandKMin',maxId:'optRingGapExpandKMax',min:0.30,max:1.00,digits:3,mode:'linear',label:'k_expand'},
+  ringGapExpandK:{minId:'optRingGapExpandKMin',maxId:'optRingGapExpandKMax',min:0.40,max:0.80,digits:3,mode:'linear',label:'k_expand'},
   leakK:{minId:'optLeakKMin',maxId:'optLeakKMax',min:0.05,max:0.30,digits:4,mode:'linear',label:'k_leak'},
   leakFull:{minId:'optLeakFullMin',maxId:'optLeakFullMax',min:0.05,max:1.00,digits:4,mode:'log',label:'leakFull'},
   kopen:{minId:'optKopenMin',maxId:'optKopenMax',min:0.03,max:0.30,digits:4,mode:'log',label:'K_open'}
@@ -864,10 +864,10 @@ function optimizeCoefficients(){
   const rand=lcg(20260524);
   const seeds=[
     makeCandidate(base, {}, optBounds),
-    makeCandidate(base, {ringGapK:0.30, leakK:0.05, leakFull:0.05, ringGapExpandK:0.30, kopen:0.03}, optBounds),
+    makeCandidate(base, {ringGapK:0.30, leakK:0.05, leakFull:0.05, ringGapExpandK:0.40, kopen:0.03}, optBounds),
     makeCandidate(base, {ringGapK:0.45, leakK:0.08, leakFull:0.08, ringGapExpandK:0.50, kopen:0.08}, optBounds),
     makeCandidate(base, {ringGapK:0.70, leakK:0.12, leakFull:0.15, ringGapExpandK:0.70, kopen:0.15}, optBounds),
-    makeCandidate(base, {ringGapK:0.80, leakK:0.20, leakFull:0.30, ringGapExpandK:1.00, kopen:0.30}, optBounds)
+    makeCandidate(base, {ringGapK:0.80, leakK:0.20, leakFull:0.30, ringGapExpandK:0.80, kopen:0.30}, optBounds)
   ];
 
   let best=null;
