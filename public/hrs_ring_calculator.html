@@ -99,7 +99,7 @@
 
 <header>
   <h1>HRS Ring 液压缓冲计算校核 v4</h1>
-  <p>目标/公差版：0.524m/s Sin 峰值速度下校核 HRS 附加力 3000N，整车总力为基础阻尼力 + HRS 附加力；图形仅显示 Sin 曲线对比。</p>
+  <p>目标/公差版：0.524m/s Ramp 恒速工况下校核 HRS 附加力 3000N，整车总力为基础阻尼力 + HRS 附加力；Sin 曲线仅作为对比。</p>
 </header>
 
 <main>
@@ -197,7 +197,7 @@
       <!-- 4. 目标与速度 -->
       <div class="card">
         <div class="card-title">4. 目标曲线、油液与速度</div>
-        <div class="row"><label>目标峰值速度 v<sub>target</sub> / m/s（Sin）</label><input class="user" id="vTarget" type="number" value="0.524" step="0.001"></div>
+        <div class="row"><label>目标恒定速度 v<sub>target</sub> / m/s（Ramp）</label><input class="user" id="vTarget" type="number" value="0.524" step="0.001"></div>
         <div class="row"><label>基础阻尼力 F<sub>damp</sub> @v<sub>target</sub> / N</label><input class="user" id="baseDamping" type="number" value="0" step="50"></div>
         <div class="row"><label>HRS 附加力目标 ΔF<sub>HRS</sub> / N</label><input class="user" id="fTarget" type="number" value="3000" step="50"></div>
         <div class="row"><label>目标总力 F<sub>total</sub>=F<sub>damp</sub>+ΔF / N</label><input class="auto" id="totalTarget" type="number" readonly></div>
@@ -643,17 +643,27 @@ function buildSinSeries(vPeak, p, name, stepOverride){
   return {name:name||fmt(vPeak,1)+' m/s', vPeak, points:pts, peak};
 }
 
+function buildRampSeries(vRamp, p, name, stepOverride){
+  const steps=stepOverride||260;
+  const pts=[];
+  for(let i=0;i<=steps;i++){
+    const s=p.strokeS*i/steps;
+    pts.push(physPoint(s, vRamp, p));
+  }
+  const peak=peakPoint(pts);
+  return {name:name||('目标Ramp '+fmt(vRamp,3)+' m/s'), vPeak:vRamp, points:pts, peak};
+}
+
 /* ── Build all data ── */
 function buildData(){
   const p=readParams();
-  const targetSeries=buildSinSeries(p.vTarget, p, '目标Sin '+fmt(p.vTarget,3)+' m/s');
+  const targetSeries=buildRampSeries(p.vTarget, p, '目标Ramp '+fmt(p.vTarget,3)+' m/s');
   targetSeries.isTarget=true;
   const series=[targetSeries].concat(
     p.vList
-      .filter(function(vPeak){return Math.abs(vPeak-p.vTarget)>1e-6;})
       .map(function(vPeak){return buildSinSeries(vPeak, p);})
   );
-  // Requirement check: only the maximum HRS additional force at target Sin peak speed is compared with 3000N.
+  // Requirement check: only the maximum HRS additional force at target constant Ramp speed is compared with 3000N.
   const target=targetSeries.peak;
   return {p, series, target};
 }
@@ -671,7 +681,7 @@ function cloneParamsWithCoeffs(base, coeff){
 
 function candidateScore(base, coeff, steps){
   const p=cloneParamsWithCoeffs(base, coeff);
-  const series=buildSinSeries(p.vTarget, p, 'opt', steps||120);
+  const series=buildRampSeries(p.vTarget, p, 'opt', steps||120);
   const peak=series.peak;
   const slope=peak.s>p.sOn ? peak.force/(peak.s-p.sOn) : Infinity;
   const tolBand=Math.max(p.fTarget*p.perfTolPct/100, p.fTarget*0.05, 1);
@@ -1005,7 +1015,7 @@ function analyzeTolerance(data){
   signs.forEach(function(slotAngle){
   signs.forEach(function(geo){
     const cand=toleranceVariant(p,{rodD,guideBushID,tubeID,entryID:p.entryID,ringOD,ringID,ringH,ringGap0,bleedW,bleedH,slotAngle,geo});
-    const peak=buildSinSeries(cand.vTarget, cand, 'tol', 12).peak;
+    const peak=buildRampSeries(cand.vTarget, cand, 'tol', 12).peak;
     const item={cand,peak,signs:{rodD,guideBushID,tubeID,entryID:p.entryID,ringOD,ringID,ringH,ringGap0,bleedW,bleedH,slotAngle,geo}};
     count++;
     keepSeed(lowSeeds, item, 1);
@@ -1013,7 +1023,7 @@ function analyzeTolerance(data){
   });});});});});});});});});});});
 
   lowSeeds.concat(highSeeds).forEach(function(item){
-    const peak=buildSinSeries(item.cand.vTarget, item.cand, 'tol').peak;
+    const peak=buildRampSeries(item.cand.vTarget, item.cand, 'tol').peak;
     const refined={cand:item.cand,peak,signs:item.signs};
     if(!minCase||peak.force<minCase.peak.force)minCase=refined;
     if(!maxCase||peak.force>maxCase.peak.force)maxCase=refined;
@@ -1047,7 +1057,7 @@ function renderRequirementAudit(data){
   el.innerHTML=
     '<div class="audit">'+
     '<div class="audit-title">HRS 目标与公差校核</div>'+
-    '<div class="audit-text">要求解释：只在 v='+fmt(p.vTarget,3)+' m/s Sin 峰值速度工况校核最大 HRS 附加力。总力目标为基础阻尼力 '+fmt(p.baseDamping,0)+' N + HRS 附加力 '+fmt(p.fTarget,0)+' N = '+fmt(p.totalTarget,0)+' N。</div>'+
+    '<div class="audit-text">要求解释：只在 v='+fmt(p.vTarget,3)+' m/s Ramp 恒速工况校核最大 HRS 附加力；Sin 曲线仅作为对比。总力目标为基础阻尼力 '+fmt(p.baseDamping,0)+' N + HRS 附加力 '+fmt(p.fTarget,0)+' N = '+fmt(p.totalTarget,0)+' N。</div>'+
     '<table class="mini-table"><thead><tr><th>项目</th><th>计算值</th><th>目标/窗口</th><th>判断</th></tr></thead><tbody>'+
     '<tr><td>0.524m/s HRS峰值</td><td>'+fmt(r.force,0)+' N</td><td>'+fmt(bounds.lower,0)+'–'+fmt(bounds.upper,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'超出')+'</span></td></tr>'+
     '<tr><td>总力峰值</td><td>'+fmt(totalNominal,0)+' N</td><td>'+fmt(bounds.totalLower,0)+'–'+fmt(bounds.totalUpper,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'超出')+'</span></td></tr>'+
@@ -1055,7 +1065,7 @@ function renderRequirementAudit(data){
     '<tr><td>生产公差性能波动</td><td>'+fmt(tol.maxDevPct,1)+'%</td><td>±'+fmt(p.perfTolPct,0)+'%</td><td><span class="pill '+tolCls+'">'+(tol.pass?'满足':'超差')+'</span></td></tr>'+
     '</tbody></table>'+
     '<div class="audit-text" style="margin-top:7px">公差扫描 '+tol.count+' 组最坏组合：HRS附加力最小 '+fmt(tol.minCase.peak.force,0)+' N，最大 '+fmt(tol.maxCase.peak.force,0)+' N；对应总力范围 '+fmt(totalMin,0)+'–'+fmt(totalMax,0)+' N。±'+fmt(p.perfTolPct,0)+'% 名义窗口为 '+fmt(tol.lower,0)+'–'+fmt(tol.upper,0)+' N。</div>'+
-    '<div class="audit-text" style="margin-top:6px">图中只保留一个目标：HRS附加力目标水平线；实际物理曲线由泄流面积、Ring胀开、Sin速度和压力平衡共同决定。</div>'+
+    '<div class="audit-text" style="margin-top:6px">图中只保留一个目标：HRS附加力目标水平线；目标Ramp按恒定速度计算，Sin曲线速度随位移变化，仅用于对比。</div>'+
     '</div>';
 }
 
@@ -1081,25 +1091,33 @@ function render(data){
     points:s.points.map(function(pt){return{x:pt.s,y:pt.force};}),
     peak:{x:s.peak.s, y:s.peak.force},
     peakText:s.name+' 峰值='+fmt(s.peak.force,0)+'N',
-    color:s.isTarget?'#2457c5':null
+    color:s.isTarget?'#2457c5':null,
+    dash:!!s.isTarget,
+    noPeakDot:!!s.isTarget
   };});
   const fvSeries=data.series.map(function(s){return{
     name:s.name,
     points:s.points.map(function(pt){return{x:pt.v,y:pt.force};}),
     peak:{x:s.peak.v, y:s.peak.force},
-    peakText:s.name+' 峰值='+fmt(s.peak.force,0)+'N'
+    peakText:s.name+' 峰值='+fmt(s.peak.force,0)+'N',
+    dash:!!s.isTarget,
+    noPeakDot:!!s.isTarget
   };});
   const openSeries=data.series.map(function(s){return{
     name:s.name,
     points:s.points.map(function(pt){return{x:pt.s,y:pt.expandRatio*100};}),
     peak:{x:s.peak.s, y:s.peak.expandRatio*100},
-    peakText:s.name+' 峰值='+fmt(s.peak.expandRatio*100,1)+'%'
+    peakText:s.name+' 峰值='+fmt(s.peak.expandRatio*100,1)+'%',
+    dash:!!s.isTarget,
+    noPeakDot:!!s.isTarget
   };});
   const dpSeries=data.series.map(function(s){return{
     name:s.name,
     points:s.points.map(function(pt){return{x:pt.s,y:pt.dpMPa};}),
     peak:{x:s.peak.s, y:s.peak.dpMPa},
-    peakText:s.name+' 峰值='+fmt(s.peak.dpMPa,2)+'MPa'
+    peakText:s.name+' 峰值='+fmt(s.peak.dpMPa,2)+'MPa',
+    dash:!!s.isTarget,
+    noPeakDot:!!s.isTarget
   };});
 
   drawChart('fsChart', fsSeries,
