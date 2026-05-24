@@ -128,7 +128,9 @@
         <div class="row"><label>Ring 内径 D<sub>i</sub> / mm</label><input class="user" id="ringID" type="number" value="29" step="0.01"></div>
         <div class="row"><label>Ring 高度 H<sub>ring</sub> / mm</label><input class="user" id="ringH" type="number" value="7.5" step="0.01"></div>
         <div class="row"><label>几何径向壁厚 (D<sub>o</sub>−D<sub>i</sub>)/2 / mm</label><input class="auto" id="ringTgeom" type="number" readonly></div>
-        <div class="row"><label>计算用径向壁厚 h / mm</label><input class="user" id="ringTrad" type="number" value="1.575" step="0.01"></div>
+        <div class="row"><label>计算用径向厚度 t<sub>rad</sub> / mm</label><input class="user" id="ringTrad" type="number" value="1.575" step="0.01"></div>
+        <div class="row"><label>径向厚度 t³ 相对刚度</label><input class="auto" id="radialStiffRelDisp" type="number" readonly></div>
+        <div class="row"><label>高度 H 泄流/密封长度系数</label><input class="auto" id="heightLeakFactorDisp" type="number" readonly></div>
         <div class="row"><label>径向补偿间隙 c = (D<sub>tube</sub>−D<sub>o</sub>)/2 / mm</label><input class="auto" id="clearanceDisp" type="number" readonly></div>
         <div class="row"><label>Ring 平均半径 r / mm</label><input class="auto" id="rMeanDisp" type="number" readonly></div>
         <div class="section-sub">强度参数</div>
@@ -219,6 +221,8 @@
             <div class="row"><label>性能目标公差 / %</label><input class="user" id="perfTolPct" type="number" value="10" step="1"></div>
             <div class="row"><label>套筒内径公差 ± / mm</label><input class="user" id="tolTubeID" type="number" value="0.05" step="0.01"></div>
             <div class="row"><label>Ring 外径公差 ± / mm</label><input class="user" id="tolRingOD" type="number" value="0.03" step="0.01"></div>
+            <div class="row"><label>Ring 高度 H 公差 ± / mm</label><input class="user" id="tolRingH" type="number" value="0.05" step="0.01"></div>
+            <div class="row"><label>Ring 径向厚度 t<sub>rad</sub> 公差 ± / mm</label><input class="user" id="tolRingTrad" type="number" value="0.03" step="0.01"></div>
             <div class="row"><label>Ring 自由端隙公差 ± / mm</label><input class="user" id="tolRingGap0" type="number" value="0.03" step="0.01"></div>
             <div class="row"><label>Bleed 槽宽公差 ± / mm</label><input class="user" id="tolBleedW" type="number" value="0.02" step="0.005"></div>
             <div class="row"><label>Bleed 槽高公差 ± / mm</label><input class="user" id="tolBleedH" type="number" value="0.01" step="0.005"></div>
@@ -238,8 +242,8 @@
             <div class="row"><label>目标峰值撑开压比 ΔP·seal/p<sub>close</sub></label><input class="auto" id="targetOpenRatio" type="number" readonly></div>
             <div class="row"><label>目标峰值残余径向间隙 c<sub>eff</sub> / mm</label><input class="auto" id="targetRadialGap" type="number" readonly></div>
             <p class="note" style="margin-top:7px">
-              p<sub>close</sub> = K<sub>open</sub>·E·h·c/r²。低压段用 ΔP·sealRatio/p<sub>close</sub> 判断 Ring 能否撑开；撑不开时保留残余径向间隙 c<sub>eff</sub>=c·(1−expandRatio)，并按该间隙计算未贴壁泄漏。K<sub>open</sub> 越小，Ring 越容易在低速胀开。<br><br>
-              <b>力值敏感度排序（高→低）：</b> k<sub>gap</sub> / g<sub>0</sub> / k<sub>leak</sub> → leakFull → K<sub>open</sub> → k<sub>expand</sub>。<br>
+              p<sub>close</sub> = K<sub>open</sub>·E·t<sub>rad</sub>·c/r²·(t<sub>rad</sub>/t<sub>ref</sub>)²。径向厚度按开口环截面弯曲刚度近似形成 t³ 影响；厚度越大，低压力越不容易撑开并关闭径向间隙。H<sub>ring</sub> 不直接线性乘入 p<sub>close</sub>，但会通过 sealRatio=(x/H<sub>ring</sub>)^1.35 和 A<sub>gap</sub>=k<sub>gap</sub>·H<sub>ring</sub>·g·sealRatio 影响起压速度和端隙泄流。低压段用 ΔP·sealRatio/p<sub>close</sub> 判断 Ring 能否撑开；撑不开时保留残余径向间隙 c<sub>eff</sub>=c·(1−expandRatio)，并按该间隙计算未贴壁泄漏。K<sub>open</sub> 越小，Ring 越容易在低速胀开。<br><br>
+              <b>尺寸敏感度：</b> t<sub>rad</sub> 主要改变 p<sub>close</sub>（约 t³），H<sub>ring</sub> 主要改变端隙泄流面积和密封建立长度；随后再看 k<sub>gap</sub> / g<sub>0</sub> / k<sub>leak</sub> → leakFull → K<sub>open</sub> → k<sub>expand</sub>。<br>
               <b>标定顺序：</b>
               ① 用示功图实测峰值力反推总等效泄流面积 A_total；
               ② 实测 Ring 自由端隙 g<sub>0</sub> 代入；
@@ -268,14 +272,15 @@
             ② <b>密封比</b>：sealRatio = (x/H<sub>ring</sub>)^1.35，x=0 时 sealRatio=0 → 附加力强制为0。<br>
             ③ <b>流量</b>：Q = A<sub>eff</sub> × v；建压有效流量 Q<sub>in</sub> = Q·sealRatio（m³/s）。<br>
             ④ <b>槽面积（圆弧段）</b>：d(x) = d₀·(1−x/L)^m，A_seg = R²·arccos[(R−d)/R] − (R−d)·√(2Rd−d²)，A_groove = N·A_seg。<br>
-            ⑤ <b>低压撑开</b>：openRatio = ΔP·sealRatio/p<sub>close</sub>；expandRatio = clamp(openRatio<sup>1.15</sup>, 0, 1)。<br>
+            ⑤ <b>低压撑开</b>：p<sub>close</sub> = K<sub>open</sub>·E·t<sub>rad</sub>·c/r²·(t<sub>rad</sub>/t<sub>ref</sub>)²；openRatio = ΔP·sealRatio/p<sub>close</sub>；expandRatio = clamp(openRatio<sup>1.15</sup>, 0, 1)。<br>
             ⑥ <b>径向间隙关闭</b>：c<sub>eff</sub> = c·(1−expandRatio)，A<sub>radial</sub> = π·D·c<sub>eff</sub>·k<sub>leak</sub>·sealRatio；低压力撑不开时该泄漏保留。<br>
             ⑦ <b>端隙更新</b>：g = g₀ + k<sub>expand</sub>·2πc·expandRatio。<br>
-            ⑧ <b>总泄流面积</b>：A<sub>total</sub> = A<sub>bleed</sub> + A<sub>gap</sub> + A<sub>R9</sub> + A<sub>R6</sub> + A<sub>entry</sub> + A<sub>radial</sub> + A<sub>residual</sub>。<br>
-            ⑨ <b>稳态附加力</b>：求解 Q<sub>in</sub> = Q<sub>orifice</sub> + Q<sub>rg</sub> 得到 ΔP；无导向间隙泄漏时等价于 ΔP = ½ρ(Q<sub>in</sub>/C<sub>d</sub>/A<sub>total</sub>)²。F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
-            ⑩ <b>Ramp 瞬态压力</b>：按 PDF Eq5 用 β/V·(A<sub>eff</sub>v − Q<sub>out</sub>) 推进 HRS 腔压，隐式求解每个步长，避免已知 ramp 工况仍按 sin 速度误判峰值位置。<br>
-            ⑪ <b>导向间隙泄漏</b>：Q<sub>rg</sub> 使用偏心环形间隙黏性流模型；当 a<sub>rg</sub>=0 时关闭。<br>
-            ⑫ <b>Sin 采样</b>：仅作为对比曲线，θ 均匀采样，s = S/2·(1−cosθ)，v = v<sub>peak</sub>·sinθ，261 点。
+            ⑧ <b>高度影响</b>：H<sub>ring</sub> 控制 sealRatio 的建立长度，同时 A<sub>gap</sub>=k<sub>gap</sub>·H<sub>ring</sub>·g·sealRatio；H 越大，端隙泄流面积越大，低进入深度起压越慢。<br>
+            ⑨ <b>总泄流面积</b>：A<sub>total</sub> = A<sub>bleed</sub> + A<sub>gap</sub> + A<sub>R9</sub> + A<sub>R6</sub> + A<sub>entry</sub> + A<sub>radial</sub> + A<sub>residual</sub>。<br>
+            ⑩ <b>稳态附加力</b>：求解 Q<sub>in</sub> = Q<sub>orifice</sub> + Q<sub>rg</sub> 得到 ΔP；无导向间隙泄漏时等价于 ΔP = ½ρ(Q<sub>in</sub>/C<sub>d</sub>/A<sub>total</sub>)²。F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
+            ⑪ <b>Ramp 瞬态压力</b>：按 PDF Eq5 用 β/V·(A<sub>eff</sub>v − Q<sub>out</sub>) 推进 HRS 腔压，隐式求解每个步长，避免已知 ramp 工况仍按 sin 速度误判峰值位置。<br>
+            ⑫ <b>导向间隙泄漏</b>：Q<sub>rg</sub> 使用偏心环形间隙黏性流模型；当 a<sub>rg</sub>=0 时关闭。<br>
+            ⑬ <b>Sin 采样</b>：仅作为对比曲线，θ 均匀采样，s = S/2·(1−cosθ)，v = v<sub>peak</sub>·sinθ，261 点。
           </div>
         </details>
       </div>
@@ -339,6 +344,19 @@ function niceMax(v){
   return (n<=1?1:n<=2?2:n<=5?5:10)*b;
 }
 
+const RING_T_REF_MM=1.575;
+const RING_H_REF_MM=7.5;
+
+function ringShapeFactors(ringTrad, ringH){
+  const t=Math.max(ringTrad,0.001);
+  const h=Math.max(ringH,0.001);
+  return {
+    radialStiffCorrection:Math.pow(t/RING_T_REF_MM,2),
+    radialStiffRel:Math.pow(t/RING_T_REF_MM,3),
+    heightLeakFactor:h/RING_H_REF_MM
+  };
+}
+
 /* ── Circular arc groove cross-section area (圆弧槽截面积)
    A = R²·arccos[(R-d)/R] - (R-d)·√(2Rd - d²)
    where R = groove radius, d = groove depth at this x ── */
@@ -383,6 +401,7 @@ function readParams(){
     rho:num('rho'), nu:num('nu'), rgGap:num('rgGap'), rgLen:num('rgLen'), cd:num('cd'),
     vList:[num('v1'),num('v2'),num('v3')],
     perfTolPct:num('perfTolPct'), tolTubeID:num('tolTubeID'), tolRingOD:num('tolRingOD'),
+    tolRingH:num('tolRingH'), tolRingTrad:num('tolRingTrad'),
     tolRingGap0:num('tolRingGap0'), tolBleedW:num('tolBleedW'), tolBleedH:num('tolBleedH'),
     tolSlotAngle:num('tolSlotAngle'), geoPosTol:num('geoPosTol'),
     kopen:num('kopen')
@@ -392,6 +411,7 @@ function readParams(){
   p.ringTgeom=(p.ringOD-p.ringID)/2;
   p.clearance=Math.max((p.tubeID-p.ringOD)/2, 0);
   p.rMean=(p.ringOD+p.ringID)/4;
+  Object.assign(p, ringShapeFactors(p.ringTrad, p.ringH));
   p.Aeff=Math.PI*(p.tubeID*p.tubeID-p.rodD*p.rodD)/4;
   p.entryToGuide=p.tubeL-p.guideL;
   p.sOn=Math.round(p.sOnTarget/5)*5;
@@ -411,11 +431,12 @@ function readParams(){
   p.r6D0=p.r6Len*Math.tan(p.r6Angle*Math.PI/180);
 
   // Ring expansion threshold pressure (MPa)
-  // p_close = Kopen · E[MPa] · h · c / r²
+  // p_close = Kopen · E[MPa] · t_rad · c / r² · (t_rad/t_ref)²
   const eMod_MPa=p.eMod*1000;
-  p.pClose=(p.rMean>0&&p.clearance>0)
+  p.pCloseBase=(p.rMean>0&&p.clearance>0)
     ? p.kopen*eMod_MPa*p.ringTrad*p.clearance/(p.rMean*p.rMean)
     : Infinity;
+  p.pClose=Number.isFinite(p.pCloseBase)?p.pCloseBase*p.radialStiffCorrection:p.pCloseBase;
 
   // Strength check at pMax
   p.sigmaMax=p.ringTrad>0.05?p.pMax*p.rMean/p.ringTrad:Infinity;
@@ -423,6 +444,8 @@ function readParams(){
 
   // Write auto-computed display values
   setv('ringTgeom', p.ringTgeom, 3);
+  setv('radialStiffRelDisp', p.radialStiffRel, 3);
+  setv('heightLeakFactorDisp', p.heightLeakFactor, 3);
   setv('clearanceDisp', p.clearance, 3);
   setv('rMeanDisp', p.rMean, 3);
   setv('entryToGuide', p.entryToGuide, 2);
@@ -997,15 +1020,17 @@ function recalcParams(c, clearanceBias){
   c.ringTgeom=(c.ringOD-c.ringID)/2;
   c.clearance=Math.max((c.tubeID-c.ringOD)/2+(clearanceBias||0), 0);
   c.rMean=(c.ringOD+c.ringID)/4;
+  Object.assign(c, ringShapeFactors(c.ringTrad, c.ringH));
   c.Aeff=Math.PI*(c.tubeID*c.tubeID-c.rodD*c.rodD)/4;
   c.bleedA=c.bleedN*c.bleedW*c.bleedH;
   c.leakStartA=Math.PI*c.tubeID*c.clearance*c.leakK;
   c.r9D0=c.r9Len*Math.tan(c.r9Angle*Math.PI/180);
   c.r6D0=c.r6Len*Math.tan(c.r6Angle*Math.PI/180);
   const eMod_MPa=c.eMod*1000;
-  c.pClose=(c.rMean>0&&c.clearance>0)
+  c.pCloseBase=(c.rMean>0&&c.clearance>0)
     ? c.kopen*eMod_MPa*c.ringTrad*c.clearance/(c.rMean*c.rMean)
     : Infinity;
+  c.pClose=Number.isFinite(c.pCloseBase)?c.pCloseBase*c.radialStiffCorrection:c.pCloseBase;
   c.sigmaMax=c.ringTrad>0.05?c.pMax*c.rMean/c.ringTrad:Infinity;
   c.SF=c.yieldMPa>0&&Number.isFinite(c.sigmaMax)?c.yieldMPa/c.sigmaMax:0;
   return c;
@@ -1015,6 +1040,8 @@ function toleranceVariant(p, signs){
   const c=Object.assign({}, p);
   c.tubeID=Math.max(0.1,p.tubeID+signs.tubeID*p.tolTubeID);
   c.ringOD=Math.max(0.1,p.ringOD+signs.ringOD*p.tolRingOD);
+  c.ringH=Math.max(0.1,p.ringH+signs.ringH*p.tolRingH);
+  c.ringTrad=Math.max(0.05,p.ringTrad+signs.ringTrad*p.tolRingTrad);
   c.ringGap0=Math.max(0,p.ringGap0+signs.ringGap0*p.tolRingGap0);
   c.bleedW=Math.max(0,p.bleedW+signs.bleedW*p.tolBleedW);
   c.bleedH=Math.max(0,p.bleedH+signs.bleedH*p.tolBleedH);
@@ -1030,21 +1057,38 @@ function analyzeTolerance(data){
   const lower=nominal*(1-p.perfTolPct/100);
   const upper=nominal*(1+p.perfTolPct/100);
   let minCase=null, maxCase=null, count=0;
+  const lowSeeds=[];
+  const highSeeds=[];
+  function keepSeed(list, item, dir){
+    list.push(item);
+    list.sort(function(a,b){return dir*(a.peak.force-b.peak.force);});
+    if(list.length>8)list.length=8;
+  }
 
   signs.forEach(function(tubeID){
   signs.forEach(function(ringOD){
+  signs.forEach(function(ringH){
+  signs.forEach(function(ringTrad){
   signs.forEach(function(ringGap0){
   signs.forEach(function(bleedW){
   signs.forEach(function(bleedH){
   signs.forEach(function(slotAngle){
   signs.forEach(function(geo){
-    const cand=toleranceVariant(p,{tubeID,ringOD,ringGap0,bleedW,bleedH,slotAngle,geo});
-    const peak=buildRampSeries(cand.vTarget, cand).peak;
-    const item={cand,peak,signs:{tubeID,ringOD,ringGap0,bleedW,bleedH,slotAngle,geo}};
+    const cand=toleranceVariant(p,{tubeID,ringOD,ringH,ringTrad,ringGap0,bleedW,bleedH,slotAngle,geo});
+    const coarse=Object.assign({}, cand, {targetModel:'steady'});
+    const peak=buildRampSeries(coarse.vTarget, coarse, 'tol', 40).peak;
+    const item={cand,peak,signs:{tubeID,ringOD,ringH,ringTrad,ringGap0,bleedW,bleedH,slotAngle,geo}};
     count++;
-    if(!minCase||peak.force<minCase.peak.force)minCase=item;
-    if(!maxCase||peak.force>maxCase.peak.force)maxCase=item;
-  });});});});});});});
+    keepSeed(lowSeeds, item, 1);
+    keepSeed(highSeeds, item, -1);
+  });});});});});});});});});
+
+  lowSeeds.concat(highSeeds).forEach(function(item){
+    const peak=buildRampSeries(item.cand.vTarget, item.cand).peak;
+    const refined={cand:item.cand,peak,signs:item.signs};
+    if(!minCase||peak.force<minCase.peak.force)minCase=refined;
+    if(!maxCase||peak.force>maxCase.peak.force)maxCase=refined;
+  });
 
   const maxDevPct=nominal>0
     ? Math.max(Math.abs(minCase.peak.force/nominal-1),Math.abs(maxCase.peak.force/nominal-1))*100
@@ -1165,6 +1209,8 @@ function render(data){
   const kvDefs=[
     ['A_eff 环形面积',fmt(p.Aeff,1)+' mm²',false],
     ['径向补偿间隙 c',fmt(p.clearance,3)+' mm',false],
+    ['径向厚度 t³相对刚度',fmt(p.radialStiffRel,2)+' ×',true],
+    ['高度H泄流/密封系数',fmt(p.heightLeakFactor,2)+' ×',false],
     ['Bleed 开口面积',fmt(p.bleedA,3)+' mm²',false],
     ['初始环隙泄漏面积',fmt(p.leakStartA,3)+' mm²',false],
     ['Ring 撑开阈值 p_close',fmt(Number.isFinite(p.pClose)?p.pClose:0,2)+' MPa',true],
