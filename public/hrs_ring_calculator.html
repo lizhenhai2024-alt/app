@@ -36,6 +36,7 @@
     input[readonly]{border-color:#c8d9fa;cursor:default}
 
     .btn{width:100%;border:0;border-radius:8px;background:var(--blue);color:#fff;padding:9px 12px;font-weight:700;font-size:13.5px;cursor:pointer;letter-spacing:.4px;margin-top:8px;transition:filter .15s,transform .1s}
+    .btn.secondary{background:#0f766e}
     .btn:hover{filter:brightness(.93)}
     .btn:active{transform:scale(.98)}
 
@@ -78,6 +79,7 @@
     .audit{border:1px solid var(--border);border-radius:8px;background:#fbfcff;padding:9px 10px;margin-bottom:10px}
     .audit-title{font-size:12px;font-weight:700;color:#344054;margin-bottom:6px}
     .audit-text{font-size:11.5px;color:#475467;line-height:1.55}
+    .opt-result{font-size:11.5px;color:#475467;line-height:1.6;background:#f8faff;border:1px solid var(--border);border-radius:8px;padding:7px 9px;margin-top:8px}
     .audit-actions{margin-top:6px;padding-left:16px}
     .audit-actions li{margin:2px 0}
     .mini-table{width:100%;font-size:10.5px;margin-top:6px;border:1px solid #e5eaf3;border-radius:6px;overflow:hidden}
@@ -229,7 +231,7 @@
         <details open>
           <summary>6. 模型标定参数</summary>
           <div class="detail-body">
-            <div class="row"><label>开口环柔度系数 K<sub>open</sub></label><input class="adv" id="kopen" type="number" value="0.10" step="0.01"></div>
+        <div class="row"><label>开口环柔度系数 K<sub>open</sub></label><input class="adv" id="kopen" type="number" value="0.10" step="0.01"></div>
             <div class="row"><label>Ring 撑开阈值压力 p<sub>close</sub> / MPa</label><input class="auto" id="pCloseDisp" type="number" readonly></div>
             <div class="row"><label>目标峰值撑开压比 ΔP·seal/p<sub>close</sub></label><input class="auto" id="targetOpenRatio" type="number" readonly></div>
             <div class="row"><label>目标峰值残余径向间隙 c<sub>eff</sub> / mm</label><input class="auto" id="targetRadialGap" type="number" readonly></div>
@@ -243,6 +245,8 @@
               ④ 最后用 1.5mm 与 2.0mm 壁厚起效速度差反标定 K<sub>open</sub>。<br>
               <b style="color:#b91c1c">注意：所有紫色参数均为需实测标定的拟合系数，初始值为几何估算值，不代表实际力值。</b>
             </p>
+            <button class="btn secondary" id="optCoeffBtn" type="button">优化紫色系数到目标窗口</button>
+            <div id="optimizeResult" class="opt-result">优化范围：k<sub>gap</sub>、k<sub>expand</sub>、k<sub>leak</sub>、leakFull、K<sub>open</sub>；不改变尺寸、槽几何和介入点。</div>
           </div>
         </details>
       </div>
@@ -645,8 +649,8 @@ function buildSinSeries(vPeak, p, name){
   return {name:name||fmt(vPeak,1)+' m/s', vPeak, points:pts, peak};
 }
 
-function buildRampSeries(vRamp, p, name){
-  const steps=260;
+function buildRampSeries(vRamp, p, name, stepOverride){
+  const steps=stepOverride||260;
   const pts=[];
   let dpMPa=0;
   let prevS=0;
@@ -715,6 +719,145 @@ function targetBounds(p){
   const lower=p.fTarget*(1-p.perfTolPct/100);
   const upper=p.fTarget*(1+p.perfTolPct/100);
   return {lower, upper, totalLower:p.baseDamping+lower, totalUpper:p.baseDamping+upper};
+}
+
+function cloneParamsWithCoeffs(base, coeff){
+  const p=Object.assign({}, base, coeff);
+  return recalcParams(p, 0);
+}
+
+function candidateScore(base, coeff, steps){
+  const p=cloneParamsWithCoeffs(base, coeff);
+  const series=buildRampSeries(p.vTarget, p, 'opt', steps||120);
+  const peak=series.peak;
+  const slope=peak.s>p.sOn ? peak.force/(peak.s-p.sOn) : Infinity;
+  const tolBand=Math.max(p.fTarget*p.perfTolPct/100, p.fTarget*0.05, 1);
+  const forceErr=(peak.force-p.fTarget)/tolBand;
+  const slopeErr=Number.isFinite(slope) ? (slope-p.riseSlopeTarget)/Math.max(p.riseSlopeTarget,1) : 10;
+  const openPenalty=Math.max(0, 1-peak.openPressureRatio);
+  const leakPenalty=Math.max(0, peak.radialGap/Math.max(p.clearance,0.001));
+  const loss=4*forceErr*forceErr + 0.65*slopeErr*slopeErr + 0.18*openPenalty*openPenalty + 0.08*leakPenalty*leakPenalty;
+  return {loss, p, coeff:Object.assign({}, coeff), peak, slope};
+}
+
+function lcg(seed){
+  let s=seed>>>0;
+  return function(){
+    s=(1664525*s+1013904223)>>>0;
+    return s/4294967296;
+  };
+}
+
+function logSample(rand, min, max){
+  return Math.exp(Math.log(min)+rand()*(Math.log(max)-Math.log(min)));
+}
+
+function clampCoeff(id, value){
+  const b=coeffBounds[id];
+  return clamp(value, b.min, b.max);
+}
+
+const coeffBounds={
+  ringGapK:{min:0.015,max:1.20,digits:3,mode:'log'},
+  ringGapExpandK:{min:0.00,max:1.20,digits:3,mode:'linear'},
+  leakK:{min:0.00,max:0.30,digits:4,mode:'linear'},
+  leakFull:{min:0.001,max:2.00,digits:4,mode:'log'},
+  kopen:{min:0.003,max:0.30,digits:4,mode:'log'}
+};
+
+function makeCandidate(base, overrides){
+  const c={
+    ringGapK:base.ringGapK,
+    ringGapExpandK:base.ringGapExpandK,
+    leakK:base.leakK,
+    leakFull:base.leakFull,
+    kopen:base.kopen
+  };
+  Object.keys(overrides||{}).forEach(function(k){c[k]=clampCoeff(k, overrides[k]);});
+  return c;
+}
+
+function refineCandidate(base, best){
+  const keys=Object.keys(coeffBounds);
+  let current=best;
+  const scales=[0.55,0.32,0.18,0.09,0.045];
+  scales.forEach(function(scale){
+    keys.forEach(function(k){
+      const b=coeffBounds[k];
+      const vals=[];
+      const v=current.coeff[k];
+      if(b.mode==='log'&&v>0){
+        vals.push(clampCoeff(k, v*Math.exp(scale)));
+        vals.push(clampCoeff(k, v/Math.exp(scale)));
+      }else{
+        vals.push(clampCoeff(k, v+(b.max-b.min)*scale));
+        vals.push(clampCoeff(k, v-(b.max-b.min)*scale));
+      }
+      vals.forEach(function(val){
+        const cand=Object.assign({}, current.coeff);
+        cand[k]=val;
+        const scored=candidateScore(base, cand, 140);
+        if(scored.loss<current.loss)current=scored;
+      });
+    });
+  });
+  return candidateScore(base, current.coeff, 260);
+}
+
+function optimizeCoefficients(){
+  const base=readParams();
+  const rand=lcg(20260524);
+  const seeds=[
+    makeCandidate(base, {}),
+    makeCandidate(base, {ringGapK:0.05, leakK:0, leakFull:0.02, ringGapExpandK:0.6, kopen:0.10}),
+    makeCandidate(base, {ringGapK:0.08, leakK:0.01, leakFull:0.05, ringGapExpandK:0.3, kopen:0.05}),
+    makeCandidate(base, {ringGapK:0.15, leakK:0.02, leakFull:0.03, ringGapExpandK:0.15, kopen:0.02}),
+    makeCandidate(base, {ringGapK:0.03, leakK:0, leakFull:0.08, ringGapExpandK:1.0, kopen:0.20})
+  ];
+
+  let best=null;
+  function consider(coeff){
+    const scored=candidateScore(base, coeff, 90);
+    if(!best||scored.loss<best.loss)best=scored;
+  }
+
+  seeds.forEach(consider);
+  for(let i=0;i<260;i++){
+    consider(makeCandidate(base, {
+      ringGapK:logSample(rand, coeffBounds.ringGapK.min, coeffBounds.ringGapK.max),
+      ringGapExpandK:coeffBounds.ringGapExpandK.min+rand()*(coeffBounds.ringGapExpandK.max-coeffBounds.ringGapExpandK.min),
+      leakK:coeffBounds.leakK.min+Math.pow(rand(),1.7)*(coeffBounds.leakK.max-coeffBounds.leakK.min),
+      leakFull:logSample(rand, coeffBounds.leakFull.min, coeffBounds.leakFull.max),
+      kopen:logSample(rand, coeffBounds.kopen.min, coeffBounds.kopen.max)
+    }));
+  }
+  best=refineCandidate(base, best);
+
+  Object.keys(coeffBounds).forEach(function(k){
+    const el=$(k);
+    if(el)el.value=best.coeff[k].toFixed(coeffBounds[k].digits);
+  });
+  const data=buildData();
+  render(data);
+
+  const bounds=targetBounds(data.p);
+  const inWindow=data.target.force>=bounds.lower&&data.target.force<=bounds.upper;
+  const slopeErrPct=Math.abs(data.p.currentRiseSlope-data.p.riseSlopeTarget)/Math.max(data.p.riseSlopeTarget,1)*100;
+  const suggestedSOn=clamp(Math.round((data.target.s-data.p.fTarget/Math.max(data.p.riseSlopeTarget,1e-9))/5)*5, 0, data.p.strokeS-5);
+  const slopeHint=Math.abs(data.p.currentRiseSlope-data.p.riseSlopeTarget)/Math.max(data.p.riseSlopeTarget,1)>0.15
+    ? '<br><span class="pill warn">斜率提示</span> 只调系数难以改变峰值位置；若目标斜率为 '+fmt(data.p.riseSlopeTarget,1)+' N/mm，可把介入点 '+fmt(suggestedSOn,0)+' mm（5mm档）作为联动优化初值，再重新匹配系数。'
+    : '';
+  $('optimizeResult').innerHTML=
+    '<b>优化完成：</b> HRS峰值 '+fmt(data.target.force,0)+' N，目标窗口 '+fmt(bounds.lower,0)+'–'+fmt(bounds.upper,0)+' N，'+
+    (inWindow?'<span class="pill ok">进入窗口</span>':'<span class="pill bad">未进入窗口</span>')+
+    '；左侧斜率 '+fmt(data.p.currentRiseSlope,1)+' N/mm（偏差 '+fmt(slopeErrPct,1)+'%）。<br>'+
+    '系数：k_gap='+fmt(data.p.ringGapK,3)+
+    '，k_expand='+fmt(data.p.ringGapExpandK,3)+
+    '，k_leak='+fmt(data.p.leakK,4)+
+    '，leakFull='+fmt(data.p.leakFull,4)+
+    '，K_open='+fmt(data.p.kopen,4)+'。<br>'+
+    '撑开压比 '+fmt(data.target.openPressureRatio,2)+
+    '，残余径向间隙 '+fmt(data.target.radialGap,3)+' mm。'+slopeHint;
 }
 
 /* ── Hi-DPI Canvas chart ──
@@ -1048,6 +1191,7 @@ function render(data){
 
 function calculate(){render(buildData());}
 $('calcBtn').addEventListener('click',calculate);
+$('optCoeffBtn').addEventListener('click',optimizeCoefficients);
 window.addEventListener('load',calculate);
 window.addEventListener('resize',function(){try{var d=buildData();render(d);}catch(e){}});
 </script>
