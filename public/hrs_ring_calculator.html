@@ -231,8 +231,10 @@
           <div class="detail-body">
             <div class="row"><label>开口环柔度系数 K<sub>open</sub></label><input class="adv" id="kopen" type="number" value="0.10" step="0.01"></div>
             <div class="row"><label>Ring 撑开阈值压力 p<sub>close</sub> / MPa</label><input class="auto" id="pCloseDisp" type="number" readonly></div>
+            <div class="row"><label>目标峰值撑开压比 ΔP·seal/p<sub>close</sub></label><input class="auto" id="targetOpenRatio" type="number" readonly></div>
+            <div class="row"><label>目标峰值残余径向间隙 c<sub>eff</sub> / mm</label><input class="auto" id="targetRadialGap" type="number" readonly></div>
             <p class="note" style="margin-top:7px">
-              p<sub>close</sub> = K<sub>open</sub>·E·h·c/r²。当 potential ΔP ≥ p<sub>close</sub> 时 Ring 开始撑向管壁，expandRatio 提升，未贴壁环隙关闭，端隙因补偿圆周而增大。K<sub>open</sub> 越小，Ring 越容易在低速胀开。<br><br>
+              p<sub>close</sub> = K<sub>open</sub>·E·h·c/r²。低压段用 ΔP·sealRatio/p<sub>close</sub> 判断 Ring 能否撑开；撑不开时保留残余径向间隙 c<sub>eff</sub>=c·(1−expandRatio)，并按该间隙计算未贴壁泄漏。K<sub>open</sub> 越小，Ring 越容易在低速胀开。<br><br>
               <b>力值敏感度排序（高→低）：</b> k<sub>gap</sub> / g<sub>0</sub> / k<sub>leak</sub> → leakFull → K<sub>open</sub> → k<sub>expand</sub>。<br>
               <b>标定顺序：</b>
               ① 用示功图实测峰值力反推总等效泄流面积 A_total；
@@ -252,15 +254,16 @@
           <div class="detail-body note">
             ① <b>位移→进入深度</b>：x = max(0, s − s<sub>on</sub>)；s<sub>on</sub> = 初始Ring到导向座距离 − (L<sub>tube</sub>−L<sub>guide</sub>)。<br>
             ② <b>密封比</b>：sealRatio = (x/H<sub>ring</sub>)^1.35，x=0 时 sealRatio=0 → 附加力强制为0。<br>
-            ③ <b>流量</b>：Q = A<sub>eff</sub> × v（m³/s）。<br>
+            ③ <b>流量</b>：Q = A<sub>eff</sub> × v；建压有效流量 Q<sub>in</sub> = Q·sealRatio（m³/s）。<br>
             ④ <b>槽面积（圆弧段）</b>：d(x) = d₀·(1−x/L)^m，A_seg = R²·arccos[(R−d)/R] − (R−d)·√(2Rd−d²)，A_groove = N·A_seg。<br>
-            ⑤ <b>Ring 胀开</b>：p<sub>close</sub> = K<sub>open</sub>·E·h·c/r²；expandRatio 与 ΔP、端隙面积自洽迭代，避免先用过高潜在压差导致 Ring 过胀。<br>
-            ⑥ <b>端隙更新</b>：g = g₀ + k<sub>expand</sub>·2πc·expandRatio。<br>
-            ⑦ <b>总泄流面积</b>：A<sub>total</sub> = A<sub>bleed</sub> + A<sub>gap</sub> + A<sub>R9</sub> + A<sub>R6</sub> + A<sub>entry</sub> + A<sub>unseated</sub> + A<sub>residual</sub>。<br>
-            ⑧ <b>稳态附加力</b>：ΔP = ½ρ(Q/C<sub>d</sub>/A<sub>total</sub>)²；F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
-            ⑨ <b>Ramp 瞬态压力</b>：按 PDF Eq5 用 β/V·(A<sub>eff</sub>v − Q<sub>out</sub>) 推进 HRS 腔压，隐式求解每个步长，避免已知 ramp 工况仍按 sin 速度误判峰值位置。<br>
-            ⑩ <b>导向间隙泄漏</b>：Q<sub>rg</sub> 使用偏心环形间隙黏性流模型；当 a<sub>rg</sub>=0 时关闭。<br>
-            ⑪ <b>Sin 采样</b>：仅作为对比曲线，θ 均匀采样，s = S/2·(1−cosθ)，v = v<sub>peak</sub>·sinθ，261 点。
+            ⑤ <b>低压撑开</b>：openRatio = ΔP·sealRatio/p<sub>close</sub>；expandRatio = clamp(openRatio<sup>1.15</sup>, 0, 1)。<br>
+            ⑥ <b>径向间隙关闭</b>：c<sub>eff</sub> = c·(1−expandRatio)，A<sub>radial</sub> = π·D·c<sub>eff</sub>·k<sub>leak</sub>·sealRatio；低压力撑不开时该泄漏保留。<br>
+            ⑦ <b>端隙更新</b>：g = g₀ + k<sub>expand</sub>·2πc·expandRatio。<br>
+            ⑧ <b>总泄流面积</b>：A<sub>total</sub> = A<sub>bleed</sub> + A<sub>gap</sub> + A<sub>R9</sub> + A<sub>R6</sub> + A<sub>entry</sub> + A<sub>radial</sub> + A<sub>residual</sub>。<br>
+            ⑨ <b>稳态附加力</b>：求解 Q<sub>in</sub> = Q<sub>orifice</sub> + Q<sub>rg</sub> 得到 ΔP；无导向间隙泄漏时等价于 ΔP = ½ρ(Q<sub>in</sub>/C<sub>d</sub>/A<sub>total</sub>)²。F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
+            ⑩ <b>Ramp 瞬态压力</b>：按 PDF Eq5 用 β/V·(A<sub>eff</sub>v − Q<sub>out</sub>) 推进 HRS 腔压，隐式求解每个步长，避免已知 ramp 工况仍按 sin 速度误判峰值位置。<br>
+            ⑪ <b>导向间隙泄漏</b>：Q<sub>rg</sub> 使用偏心环形间隙黏性流模型；当 a<sub>rg</sub>=0 时关闭。<br>
+            ⑫ <b>Sin 采样</b>：仅作为对比曲线，θ 均匀采样，s = S/2·(1−cosθ)，v = v<sub>peak</sub>·sinθ，261 点。
           </div>
         </details>
       </div>
@@ -443,6 +446,7 @@ function physPoint(s, v, p){
   // Pre-entry or zero speed: no HRS force
   if(x<=0||v<=0){
     return {s,v,x:0,force:0,dpMPa:0,sealRatio:0,expandRatio:0,
+            openPressureRatio:0,radialGap:p.clearance,radialLeak:0,
             gapWidth:p.ringGap0,gapArea:0,unseated:0,entryLeak:0,
             slotR9:0,slotR6:0,totalA:p.bleedA+p.leakFull,
             qLmin:0,stress:0,state:'未进入'};
@@ -471,21 +475,23 @@ function physPoint(s, v, p){
   let expandRatio=0;
   let gapWidth=p.ringGap0;
   let gapArea=0;
-  let unseated=0;
+  let radialGap=p.clearance;
+  let radialLeak=0;
   let totalA=0;
   let dpMPa=0;
+  let openPressureRatio=0;
 
   for(let iter=0; iter<30; iter++){
+    radialGap=p.clearance*(1-expandRatio);
     gapWidth=p.ringGap0+p.ringGapExpandK*2*Math.PI*p.clearance*expandRatio;
     gapArea=p.ringGapK*p.ringH*Math.max(gapWidth,0)*sealRatio;
-    unseated=p.leakStartA*(1-expandRatio)*sealRatio;
-    totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+unseated+p.leakFull;
+    radialLeak=Math.PI*p.tubeID*radialGap*p.leakK*sealRatio;
+    totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+radialLeak+p.leakFull;
 
     dpMPa=solveSteadyPressure(qIn, totalA, p);
 
-    const nextExpand=(!Number.isFinite(p.pClose)||p.pClose<=0)
-      ? 1
-      : clamp(Math.pow(Math.max((dpMPa*sealRatio)/p.pClose,0),1.15), 0, 1);
+    openPressureRatio=ringOpenPressureRatio(dpMPa, sealRatio, p);
+    const nextExpand=expandRatioFromPressure(openPressureRatio);
     const dampedExpand=0.65*expandRatio+0.35*nextExpand;
     if(Math.abs(dampedExpand-expandRatio)<1e-5){
       expandRatio=dampedExpand;
@@ -494,22 +500,26 @@ function physPoint(s, v, p){
     expandRatio=dampedExpand;
   }
 
+  radialGap=p.clearance*(1-expandRatio);
   gapWidth=p.ringGap0+p.ringGapExpandK*2*Math.PI*p.clearance*expandRatio;
   gapArea=p.ringGapK*p.ringH*Math.max(gapWidth,0)*sealRatio;
-  unseated=p.leakStartA*(1-expandRatio)*sealRatio;
-  totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+unseated+p.leakFull;
+  radialLeak=Math.PI*p.tubeID*radialGap*p.leakK*sealRatio;
+  totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+radialLeak+p.leakFull;
 
   dpMPa=solveSteadyPressure(qIn, totalA, p);
+  openPressureRatio=ringOpenPressureRatio(dpMPa, sealRatio, p);
   const force=sealRatio*dpMPa*p.Aeff;  // N = MPa × mm²
 
   // Hoop stress (simplified: σ = ΔP·r/h, at current dp)
   const stress=p.ringTrad>0.05?dpMPa*p.rMean/p.ringTrad:0;
 
-  let state='贴壁不足';
+  let state='低压未撑开';
   if(expandRatio>=0.95)state='已贴壁';
   else if(expandRatio>=0.50)state='部分贴壁';
+  else if(expandRatio>=0.05)state='撑开不足';
 
-  return {s,v,x,force,dpMPa,sealRatio,expandRatio,gapWidth,gapArea,unseated,
+  return {s,v,x,force,dpMPa,sealRatio,expandRatio,openPressureRatio,
+          radialGap,radialLeak,gapWidth,gapArea,unseated:radialLeak,
           entryLeak,slotR9:slots.r9,slotR6:slots.r6,totalA,qLmin,stress,state};
 }
 
@@ -517,6 +527,7 @@ function pressurePoint(s, v, p, dpMPa){
   const x=Math.max(0, s-p.sOn);
   if(x<=0||v<=0||dpMPa<=0){
     return {s,v,x:Math.max(0,x),force:0,dpMPa:0,sealRatio:0,expandRatio:0,
+            openPressureRatio:0,radialGap:p.clearance,radialLeak:0,
             gapWidth:p.ringGap0,gapArea:0,unseated:0,entryLeak:0,
             slotR9:0,slotR6:0,totalA:p.bleedA+p.leakFull,
             qLmin:0,stress:0,state:x<=0?'未进入':'未建压'};
@@ -525,23 +536,35 @@ function pressurePoint(s, v, p, dpMPa){
   const sealRatio=Math.pow(clamp(x/Math.max(p.ringH,0.001),0,1), 1.35);
   const slots=slotPair(x, p);
   const entryLeak=p.leakStartA*Math.pow(1-sealRatio, 1.15);
-  const expandRatio=(!Number.isFinite(p.pClose)||p.pClose<=0)
-    ? 1
-    : clamp(Math.pow(Math.max((dpMPa*sealRatio)/p.pClose,0),1.15), 0, 1);
+  const openPressureRatio=ringOpenPressureRatio(dpMPa, sealRatio, p);
+  const expandRatio=expandRatioFromPressure(openPressureRatio);
+  const radialGap=p.clearance*(1-expandRatio);
   const gapWidth=p.ringGap0+p.ringGapExpandK*2*Math.PI*p.clearance*expandRatio;
   const gapArea=p.ringGapK*p.ringH*Math.max(gapWidth,0)*sealRatio;
-  const unseated=p.leakStartA*(1-expandRatio)*sealRatio;
-  const totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+unseated+p.leakFull;
+  const radialLeak=Math.PI*p.tubeID*radialGap*p.leakK*sealRatio;
+  const totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+radialLeak+p.leakFull;
   const force=sealRatio*dpMPa*p.Aeff;
   const qLmin=p.Aeff*1e-6*v*sealRatio*60000;
   const stress=p.ringTrad>0.05?dpMPa*p.rMean/p.ringTrad:0;
 
-  let state='贴壁不足';
+  let state='低压未撑开';
   if(expandRatio>=0.95)state='已贴壁';
   else if(expandRatio>=0.50)state='部分贴壁';
+  else if(expandRatio>=0.05)state='撑开不足';
 
-  return {s,v,x,force,dpMPa,sealRatio,expandRatio,gapWidth,gapArea,unseated,
+  return {s,v,x,force,dpMPa,sealRatio,expandRatio,openPressureRatio,
+          radialGap,radialLeak,gapWidth,gapArea,unseated:radialLeak,
           entryLeak,slotR9:slots.r9,slotR6:slots.r6,totalA,qLmin,stress,state};
+}
+
+function ringOpenPressureRatio(dpMPa, sealRatio, p){
+  if(!Number.isFinite(p.pClose)||p.pClose<=0)return Infinity;
+  return Math.max(dpMPa*sealRatio/p.pClose, 0);
+}
+
+function expandRatioFromPressure(openPressureRatio){
+  if(!Number.isFinite(openPressureRatio))return 1;
+  return clamp(Math.pow(Math.max(openPressureRatio,0),1.15), 0, 1);
 }
 
 function orificeOutflowM3s(totalA, dpMPa, p){
@@ -874,6 +897,7 @@ function renderRequirementAudit(data){
   const tolCls=tol.pass?'ok':'bad';
   const targetCls=targetPass?'ok':'bad';
   const slopeCls=slopePass?'ok':'warn';
+  const openCls=r.expandRatio>=0.95?'ok':r.expandRatio>=0.50?'warn':'bad';
   const totalNominal=p.baseDamping+r.force;
   const totalMin=p.baseDamping+tol.minCase.peak.force;
   const totalMax=p.baseDamping+tol.maxCase.peak.force;
@@ -887,6 +911,7 @@ function renderRequirementAudit(data){
     '<tr><td>总力峰值</td><td>'+fmt(totalNominal,0)+' N</td><td>'+fmt(bounds.totalLower,0)+'–'+fmt(bounds.totalUpper,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'超出')+'</span></td></tr>'+
     '<tr><td>介入点</td><td>'+fmt(p.sOn,1)+' mm</td><td>5mm档位</td><td><span class="pill ok">OK</span></td></tr>'+
     '<tr><td>左侧平均斜率</td><td>'+fmt(p.currentRiseSlope,1)+' N/mm</td><td>'+fmt(p.riseSlopeTarget,1)+' N/mm</td><td><span class="pill '+slopeCls+'">'+(slopePass?'接近':'需调整')+'</span></td></tr>'+
+    '<tr><td>低压撑开/径向间隙</td><td>压比 '+fmt(r.openPressureRatio,2)+'，c_eff '+fmt(r.radialGap,3)+' mm</td><td>压比≥1，c_eff≈0</td><td><span class="pill '+openCls+'">'+r.state+'</span></td></tr>'+
     '<tr><td>生产公差性能波动</td><td>'+fmt(tol.maxDevPct,1)+'%</td><td>±'+fmt(p.perfTolPct,0)+'%</td><td><span class="pill '+tolCls+'">'+(tol.pass?'满足':'超差')+'</span></td></tr>'+
     '</tbody></table>'+
     '<div class="audit-text" style="margin-top:7px">公差扫描 '+tol.count+' 组最坏组合：HRS附加力最小 '+fmt(tol.minCase.peak.force,0)+' N，最大 '+fmt(tol.maxCase.peak.force,0)+' N；对应总力范围 '+fmt(totalMin,0)+'–'+fmt(totalMax,0)+' N。±'+fmt(p.perfTolPct,0)+'% 名义窗口为 '+fmt(tol.lower,0)+'–'+fmt(tol.upper,0)+' N。</div>'+
@@ -960,6 +985,8 @@ function render(data){
   /* Pass/fail banner */
   const bounds=targetBounds(p);
   const pass=data.target.force>=bounds.lower&&data.target.force<=bounds.upper;
+  setv('targetOpenRatio', data.target.openPressureRatio, 2);
+  setv('targetRadialGap', data.target.radialGap, 3);
   $('passLine').innerHTML=
     '<span class="pass-banner '+(pass?'ok':'bad')+'">'+(pass?'✔ 满足':'✘ 超出目标窗口')+
     '  v='+fmt(p.vTarget,3)+'m/s：HRS附加力 <b>'+fmt(data.target.force,0)+
@@ -976,6 +1003,8 @@ function render(data){
     ['介入点/目标峰值',fmt(p.sOn,1)+' / '+fmt(p.targetPeakS,1)+' mm',true],
     ['当前/目标左侧斜率',fmt(p.currentRiseSlope,1)+' / '+fmt(p.riseSlopeTarget,1)+' N/mm',false],
     ['Ring 撑开阈值 p_close',fmt(Number.isFinite(p.pClose)?p.pClose:0,2)+' MPa',true],
+    ['目标撑开压比',fmt(data.target.openPressureRatio,2)+' × p_close',data.target.expandRatio>=0.95],
+    ['目标残余径向间隙',fmt(data.target.radialGap,3)+' mm',data.target.expandRatio>=0.95],
     ['R9 入口槽深 d₀',fmt(p.r9D0,3)+' mm',false],
     ['R6 入口槽深 d₀',fmt(p.r6D0,3)+' mm',false],
     ['强度安全系数 SF',fmt(p.SF,2)+'  (σθ='+fmt(p.sigmaMax,0)+' MPa)',p.SF>=2],
@@ -997,7 +1026,9 @@ function render(data){
       '<td><span class="pill '+fcls+'">'+fmt(r.force,0)+'</span></td>'+
       '<td>'+fmt(r.sealRatio*100,1)+'%</td>'+
       '<td><span class="pill '+ecls+'">'+fmt(r.expandRatio*100,1)+'%</span></td>'+
+      '<td>'+fmt(r.radialGap,3)+'</td>'+
       '<td>'+fmt(r.gapWidth,3)+'</td>'+
+      '<td>'+fmt(r.radialLeak,3)+'</td>'+
       '<td>'+fmt(r.slotR9+r.slotR6,3)+'</td>'+
       '<td>'+fmt(r.totalA,3)+'</td>'+
       '<td>'+fmt(r.qLmin,2)+'</td>'+
@@ -1010,7 +1041,7 @@ function render(data){
     '<table><thead><tr>'+
     '<th>工况</th><th>峰力位移<br>s/mm</th><th>瞬时速度<br>m/s</th><th>进入深度<br>x/mm</th>'+
     '<th>峰值力<br>N</th><th>密封比<br>sealRatio</th><th>胀开比<br>expandRatio</th>'+
-    '<th>端隙宽<br>g/mm</th><th>R9+R6槽<br>面积mm²</th><th>总泄流<br>面积mm²</th>'+
+    '<th>残余径向<br>c_eff/mm</th><th>端隙宽<br>g/mm</th><th>径向泄漏<br>面积mm²</th><th>R9+R6槽<br>面积mm²</th><th>总泄流<br>面积mm²</th>'+
     '<th>流量<br>L/min</th><th>压差<br>MPa</th><th>环向应力<br>MPa</th><th>状态</th>'+
     '</tr></thead><tbody>'+rows+'</tbody></table>';
 }
