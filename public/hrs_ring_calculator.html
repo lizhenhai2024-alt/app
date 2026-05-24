@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HRS Ring 液压缓冲计算校核 v3</title>
+  <title>HRS Ring 液压缓冲计算校核 v4</title>
   <style>
     :root{
       --bg:#f0f4fa;--card:#ffffff;--text:#172033;--muted:#667085;
@@ -94,8 +94,8 @@
 <body>
 
 <header>
-  <h1>HRS Ring 液压缓冲计算校核 v3</h1>
-  <p>目标/公差版：0.524m/s 工况下校核 HRS 附加力 3000N，整车总力为基础阻尼力 + HRS 附加力；介入点按 5mm 档位调节，并计算尺寸/形位公差导致的性能波动是否满足 ±10%。</p>
+  <h1>HRS Ring 液压缓冲计算校核 v4</h1>
+  <p>目标/公差版：0.524m/s ramp 工况下校核 HRS 附加力 3000N，整车总力为基础阻尼力 + HRS 附加力；借鉴 CAEWO2132，将目标曲线从 sin 采样改为已知速度 ramp，并可用 HRS 腔体积模量做瞬态压力推进。</p>
 </header>
 
 <main>
@@ -188,12 +188,15 @@
       <div class="card">
         <div class="card-title">4. 目标曲线、油液与速度</div>
         <div class="row"><label>目标速度 v<sub>target</sub> / m/s（VR-EF-33 ramp）</label><input class="user" id="vTarget" type="number" value="0.524" step="0.001"></div>
+        <div class="row"><label>目标曲线算法（借鉴 CAEWO2132）</label><select class="user" id="targetModel"><option value="transient" selected>Ramp 瞬态压力</option><option value="steady">Ramp 稳态流动</option></select></div>
         <div class="row"><label>基础阻尼力 F<sub>damp</sub> @v<sub>target</sub> / N</label><input class="user" id="baseDamping" type="number" value="0" step="50"></div>
         <div class="row"><label>HRS 附加力目标 ΔF<sub>HRS</sub> / N</label><input class="user" id="fTarget" type="number" value="3000" step="50"></div>
         <div class="row"><label>目标总力 F<sub>total</sub>=F<sub>damp</sub>+ΔF / N</label><input class="auto" id="totalTarget" type="number" readonly></div>
         <div class="row"><label>左侧平均斜率目标 / N/mm</label><input class="user" id="riseSlopeTarget" type="number" value="150" step="10"></div>
         <div class="row"><label>目标峰值位移 s<sub>peak,target</sub> / mm</label><input class="auto" id="targetPeakS" type="number" readonly></div>
         <div class="row"><label>当前左侧平均斜率 / N/mm</label><input class="auto" id="currentRiseSlope" type="number" readonly></div>
+        <div class="row"><label>HRS 有效腔长 L<sub>stop</sub> / mm</label><input class="user" id="hrsVolL" type="number" value="52" step="0.5"></div>
+        <div class="row"><label>有效体积模量 β<sub>eff</sub> / MPa（含气油液）</label><input class="user" id="bulkMPa" type="number" value="350" step="10"></div>
         <div class="row"><label>油液密度 ρ / kg/m³</label><input class="user" id="rho" type="number" value="840" step="1"></div>
         <div class="row"><label>动粘度 ν / mm²/s</label><input class="user" id="nu" type="number" value="21" step="0.1"></div>
         <div class="row"><label>流量系数 C<sub>d</sub></label><input class="user" id="cd" type="number" value="0.65" step="0.01"></div>
@@ -252,8 +255,9 @@
             ⑤ <b>Ring 胀开</b>：p<sub>close</sub> = K<sub>open</sub>·E·h·c/r²；expandRatio 与 ΔP、端隙面积自洽迭代，避免先用过高潜在压差导致 Ring 过胀。<br>
             ⑥ <b>端隙更新</b>：g = g₀ + k<sub>expand</sub>·2πc·expandRatio。<br>
             ⑦ <b>总泄流面积</b>：A<sub>total</sub> = A<sub>bleed</sub> + A<sub>gap</sub> + A<sub>R9</sub> + A<sub>R6</sub> + A<sub>entry</sub> + A<sub>unseated</sub> + A<sub>residual</sub>。<br>
-            ⑧ <b>附加力</b>：ΔP = ½ρ(Q/C<sub>d</sub>/A<sub>total</sub>)²；F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
-            ⑨ <b>Sin 采样</b>：θ 均匀采样，s = S/2·(1−cosθ)，v = v<sub>peak</sub>·sinθ，261 点。
+            ⑧ <b>稳态附加力</b>：ΔP = ½ρ(Q/C<sub>d</sub>/A<sub>total</sub>)²；F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
+            ⑨ <b>Ramp 瞬态压力</b>：按 PDF Eq5 用 β/V·(A<sub>eff</sub>v − Q<sub>out</sub>) 推进 HRS 腔压，隐式求解每个步长，避免已知 ramp 工况仍按 sin 速度误判峰值位置。<br>
+            ⑩ <b>Sin 采样</b>：仅作为对比曲线，θ 均匀采样，s = S/2·(1−cosθ)，v = v<sub>peak</sub>·sinθ，261 点。
           </div>
         </details>
       </div>
@@ -265,7 +269,7 @@
 
       <div class="charts">
         <div class="chart-wrap">
-          <div class="card-title">F-S 曲线：HRS附加力 vs 复原拉伸位移（Sin振动）</div>
+          <div class="card-title">F-S 曲线：HRS附加力 vs 复原拉伸位移（目标Ramp + Sin对比）</div>
           <canvas id="fsChart"></canvas>
         </div>
         <div class="chart-wrap">
@@ -302,9 +306,13 @@
 /* ── Helpers ── */
 function $(id){return document.getElementById(id)}
 function num(id){const e=$(id);const v=e?Number(e.value):0;return Number.isFinite(v)?v:0}
+function val(id){const e=$(id);return e?e.value:''}
 function setv(id,v,d){const e=$(id);if(e)e.value=Number.isFinite(v)?v.toFixed(d):''}
 function fmt(v,d){return Number.isFinite(v)?Number(v).toFixed(d):'-'}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function peakPoint(pts){
+  return pts.reduce(function(a,b){return b.force>=a.force-1e-6?b:a;}, pts[0]);
+}
 function niceMax(v){
   if(!Number.isFinite(v)||v<=0)return 1;
   const e=Math.floor(Math.log10(v));
@@ -351,8 +359,10 @@ function readParams(){
     r9N:num('r9N'), r9R:num('r9R'), r9Len:num('r9Len'), r9Angle:num('r9Angle'),
     r6N:num('r6N'), r6R:num('r6R'), r6Len:num('r6Len'), r6Angle:num('r6Angle'),
     slotExp:num('slotExp'),
-    vTarget:num('vTarget'), baseDamping:num('baseDamping'), fTarget:num('fTarget'),
-    riseSlopeTarget:num('riseSlopeTarget'), rho:num('rho'), nu:num('nu'), cd:num('cd'),
+    vTarget:num('vTarget'), targetModel:val('targetModel')||'transient',
+    baseDamping:num('baseDamping'), fTarget:num('fTarget'),
+    riseSlopeTarget:num('riseSlopeTarget'), hrsVolL:num('hrsVolL'), bulkMPa:num('bulkMPa'),
+    rho:num('rho'), nu:num('nu'), cd:num('cd'),
     vList:[num('v1'),num('v2'),num('v3')],
     perfTolPct:num('perfTolPct'), tolTubeID:num('tolTubeID'), tolRingOD:num('tolRingOD'),
     tolRingGap0:num('tolRingGap0'), tolBleedW:num('tolBleedW'), tolBleedH:num('tolBleedH'),
@@ -502,6 +512,70 @@ function physPoint(s, v, p){
           entryLeak,slotR9:slots.r9,slotR6:slots.r6,totalA,qLmin,stress,state};
 }
 
+function pressurePoint(s, v, p, dpMPa){
+  const x=Math.max(0, s-p.sOn);
+  if(x<=0||v<=0||dpMPa<=0){
+    return {s,v,x:Math.max(0,x),force:0,dpMPa:0,sealRatio:0,expandRatio:0,
+            gapWidth:p.ringGap0,gapArea:0,unseated:0,entryLeak:0,
+            slotR9:0,slotR6:0,totalA:p.bleedA+p.leakFull,
+            qLmin:0,stress:0,state:x<=0?'未进入':'未建压'};
+  }
+
+  const sealRatio=Math.pow(clamp(x/Math.max(p.ringH,0.001),0,1), 1.35);
+  const slots=slotPair(x, p);
+  const entryLeak=p.leakStartA*Math.pow(1-sealRatio, 1.15);
+  const expandRatio=(!Number.isFinite(p.pClose)||p.pClose<=0)
+    ? 1
+    : clamp(Math.pow(Math.max((dpMPa*sealRatio)/p.pClose,0),1.15), 0, 1);
+  const gapWidth=p.ringGap0+p.ringGapExpandK*2*Math.PI*p.clearance*expandRatio;
+  const gapArea=p.ringGapK*p.ringH*Math.max(gapWidth,0)*sealRatio;
+  const unseated=p.leakStartA*(1-expandRatio)*sealRatio;
+  const totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+unseated+p.leakFull;
+  const force=sealRatio*dpMPa*p.Aeff;
+  const qLmin=p.Aeff*1e-6*v*60000;
+  const stress=p.ringTrad>0.05?dpMPa*p.rMean/p.ringTrad:0;
+
+  let state='贴壁不足';
+  if(expandRatio>=0.95)state='已贴壁';
+  else if(expandRatio>=0.50)state='部分贴壁';
+
+  return {s,v,x,force,dpMPa,sealRatio,expandRatio,gapWidth,gapArea,unseated,
+          entryLeak,slotR9:slots.r9,slotR6:slots.r6,totalA,qLmin,stress,state};
+}
+
+function outflowM3s(totalA, dpMPa, p){
+  if(dpMPa<=0||p.cd<=0)return 0;
+  const areaM2=Math.max(totalA,0.001)*1e-6;
+  return p.cd*areaM2*Math.sqrt(2*dpMPa*1e6/Math.max(p.rho,1));
+}
+
+function solveTransientPressure(prevMPa, s, v, p, dt){
+  const probe=pressurePoint(s, v, p, Math.max(prevMPa, 0.001));
+  if(probe.x<=0||v<=0)return 0;
+  const qIn=p.Aeff*1e-6*v*probe.sealRatio;
+  const volume=Math.max(p.Aeff*1e-6*Math.max(p.hrsVolL,1)*1e-3, 1e-9);
+  const gain=Math.max(p.bulkMPa,1)*1e6/volume*dt;
+  const prevPa=Math.max(prevMPa,0)*1e6;
+
+  function residual(dpPa){
+    const st=pressurePoint(s, v, p, dpPa/1e6);
+    return dpPa-prevPa-gain*(qIn-outflowM3s(st.totalA, dpPa/1e6, p));
+  }
+
+  let lo=0;
+  let hi=Math.max(prevPa*1.5+1e5, 1e5);
+  let guard=0;
+  while(residual(hi)<0&&hi<500e6&&guard<40){
+    hi*=2;
+    guard++;
+  }
+  for(let i=0;i<42;i++){
+    const mid=(lo+hi)*0.5;
+    if(residual(mid)>0)hi=mid;else lo=mid;
+  }
+  return hi/1e6;
+}
+
 /* ── Build F-S sin series
    Uses uniform-θ sampling: s = S/2·(1−cosθ), v = vPeak·sinθ
    This gives better resolution near start/end where velocity changes rapidly ── */
@@ -514,8 +588,33 @@ function buildSinSeries(vPeak, p, name){
     const v=vPeak*Math.sin(th);               // sin velocity
     pts.push(physPoint(s, v, p));
   }
-  const peak=pts.reduce((a,b)=>b.force>a.force?b:a, pts[0]);
+  const peak=peakPoint(pts);
   return {name:name||fmt(vPeak,1)+' m/s', vPeak, points:pts, peak};
+}
+
+function buildRampSeries(vRamp, p, name){
+  const steps=260;
+  const pts=[];
+  let dpMPa=0;
+  let prevS=0;
+  for(let i=0;i<=steps;i++){
+    const s=p.strokeS*i/steps;
+    const v=vRamp;
+    if(i>0&&p.targetModel==='transient'){
+      const ds=s-prevS;
+      const subSteps=Math.max(1, Math.ceil(ds/0.25));
+      for(let k=1;k<=subSteps;k++){
+        const ss=prevS+ds*k/subSteps;
+        const dt=(ds/subSteps/1000)/Math.max(vRamp,1e-6);
+        dpMPa=solveTransientPressure(dpMPa, ss, vRamp, p, dt);
+      }
+    }
+    pts.push(p.targetModel==='transient' ? pressurePoint(s, v, p, dpMPa) : physPoint(s, v, p));
+    prevS=s;
+  }
+  const peak=peakPoint(pts);
+  const mode=p.targetModel==='transient'?'瞬态':'稳态';
+  return {name:name||('目标Ramp '+mode+' '+fmt(vRamp,3)+' m/s'), vPeak:vRamp, points:pts, peak};
 }
 
 function buildTargetEnvelope(p){
@@ -545,7 +644,7 @@ function buildTargetEnvelope(p){
 /* ── Build all data ── */
 function buildData(){
   const p=readParams();
-  const targetSeries=buildSinSeries(p.vTarget, p, '目标 '+fmt(p.vTarget,3)+' m/s');
+  const targetSeries=buildRampSeries(p.vTarget, p);
   targetSeries.isTarget=true;
   const series=[targetSeries].concat(
     p.vList
@@ -710,7 +809,7 @@ function analyzeTolerance(data){
   signs.forEach(function(slotAngle){
   signs.forEach(function(geo){
     const cand=toleranceVariant(p,{tubeID,ringOD,ringGap0,bleedW,bleedH,slotAngle,geo});
-    const peak=buildSinSeries(cand.vTarget, cand).peak;
+    const peak=buildRampSeries(cand.vTarget, cand).peak;
     const item={cand,peak,signs:{tubeID,ringOD,ringGap0,bleedW,bleedH,slotAngle,geo}};
     count++;
     if(!minCase||peak.force<minCase.peak.force)minCase=item;
@@ -745,7 +844,7 @@ function renderRequirementAudit(data){
   el.innerHTML=
     '<div class="audit">'+
     '<div class="audit-title">AUDI PPE Hydraulic rebound stop 要求校核</div>'+
-    '<div class="audit-text">要求解释：只在 v='+fmt(p.vTarget,3)+' m/s ramp 工况校核最大 HRS 附加力；总力目标为基础阻尼力 '+fmt(p.baseDamping,0)+' N + HRS 附加力 '+fmt(p.fTarget,0)+' N = '+fmt(p.totalTarget,0)+' N。</div>'+
+    '<div class="audit-text">要求解释：只在 v='+fmt(p.vTarget,3)+' m/s ramp 工况校核最大 HRS 附加力；当前目标算法为 '+(p.targetModel==='transient'?'HRS腔瞬态压力':'稳态流动')+'。总力目标为基础阻尼力 '+fmt(p.baseDamping,0)+' N + HRS 附加力 '+fmt(p.fTarget,0)+' N = '+fmt(p.totalTarget,0)+' N。</div>'+
     '<table class="mini-table"><thead><tr><th>项目</th><th>计算值</th><th>目标/窗口</th><th>判断</th></tr></thead><tbody>'+
     '<tr><td>0.524m/s HRS峰值</td><td>'+fmt(r.force,0)+' N</td><td>≥ '+fmt(p.fTarget,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'不足')+'</span></td></tr>'+
     '<tr><td>总力峰值</td><td>'+fmt(totalNominal,0)+' N</td><td>'+fmt(p.totalTarget,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'不足')+'</span></td></tr>'+
@@ -754,7 +853,7 @@ function renderRequirementAudit(data){
     '<tr><td>生产公差性能波动</td><td>'+fmt(tol.maxDevPct,1)+'%</td><td>±'+fmt(p.perfTolPct,0)+'%</td><td><span class="pill '+tolCls+'">'+(tol.pass?'满足':'超差')+'</span></td></tr>'+
     '</tbody></table>'+
     '<div class="audit-text" style="margin-top:7px">公差扫描 '+tol.count+' 组最坏组合：HRS附加力最小 '+fmt(tol.minCase.peak.force,0)+' N，最大 '+fmt(tol.maxCase.peak.force,0)+' N；对应总力范围 '+fmt(totalMin,0)+'–'+fmt(totalMax,0)+' N。±'+fmt(p.perfTolPct,0)+'% 名义窗口为 '+fmt(tol.lower,0)+'–'+fmt(tol.upper,0)+' N。</div>'+
-    '<div class="audit-text" style="margin-top:6px">左侧目标包络使用平滑 smoothstep 从 0 增加到最大值，用于避免突增；实际物理曲线仍由泄流面积、Ring胀开和速度共同决定。</div>'+
+    '<div class="audit-text" style="margin-top:6px">左侧目标包络使用平滑 smoothstep 从 0 增加到最大值，用于避免突增；实际物理曲线由泄流面积、Ring胀开、ramp速度和压力建立过程共同决定。完整 firing 1/4 车模型还需质量、弹簧、安装点和主阀阻尼表。</div>'+
     '</div>';
 }
 
@@ -807,7 +906,7 @@ function render(data){
      targetY:p.fTarget, markers:sMarkers});
 
   drawChart('fvChart', fvSeries,
-    {xMax:Math.max.apply(null,p.vList),xDigits:2,yDigits:0,
+    {xMax:Math.max.apply(null,[p.vTarget].concat(p.vList)),xDigits:2,yDigits:0,
      xLabel:'瞬时复原速度 v / m/s',yLabel:'HRS附加力 F / N',
      targetY:p.fTarget});
 
@@ -871,7 +970,7 @@ function render(data){
   }).join('');
   $('resultTable').innerHTML=
     '<table><thead><tr>'+
-    '<th>Sin峰速</th><th>峰力位移<br>s/mm</th><th>瞬时速度<br>m/s</th><th>进入深度<br>x/mm</th>'+
+    '<th>工况</th><th>峰力位移<br>s/mm</th><th>瞬时速度<br>m/s</th><th>进入深度<br>x/mm</th>'+
     '<th>峰值力<br>N</th><th>密封比<br>sealRatio</th><th>胀开比<br>expandRatio</th>'+
     '<th>端隙宽<br>g/mm</th><th>R9+R6槽<br>面积mm²</th><th>总泄流<br>面积mm²</th>'+
     '<th>流量<br>L/min</th><th>压差<br>MPa</th><th>环向应力<br>MPa</th><th>状态</th>'+
