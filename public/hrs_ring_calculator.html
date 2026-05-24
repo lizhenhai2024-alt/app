@@ -26,6 +26,7 @@
     .card-title{font-size:13.5px;font-weight:700;color:var(--blue);border-left:3px solid var(--blue);padding-left:9px;margin-bottom:10px;letter-spacing:.2px}
 
     .row{display:grid;grid-template-columns:1fr 110px;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid #f0f3f8}
+    .row.range{grid-template-columns:1fr 156px}
     .row:last-child{border-bottom:none}
     .row label{color:#374151;line-height:1.3;padding-right:4px}
     input,select{width:100%;height:28px;border:1px solid #cbd5e1;border-radius:6px;padding:2px 7px;font-size:12.5px;font-weight:600;color:#111827;background:#fff;transition:border-color .15s}
@@ -34,6 +35,7 @@
     input.auto{background:var(--auto);color:#1d4ed8}
     input.adv{background:var(--adv)}
     input[readonly]{border-color:#c8d9fa;cursor:default}
+    .range-cell{display:grid;grid-template-columns:1fr 1fr;gap:4px}
 
     .btn{width:100%;border:0;border-radius:8px;background:var(--blue);color:#fff;padding:9px 12px;font-weight:700;font-size:13.5px;cursor:pointer;letter-spacing:.4px;margin-top:8px;transition:filter .15s,transform .1s}
     .btn.secondary{background:#0f766e}
@@ -245,8 +247,14 @@
               ④ 最后用 1.5mm 与 2.0mm 壁厚起效速度差反标定 K<sub>open</sub>。<br>
               <b style="color:#b91c1c">注意：所有紫色参数均为需实测标定的拟合系数，初始值为几何估算值，不代表实际力值。</b>
             </p>
+            <div class="section-sub">优化约束范围（min / max）</div>
+            <div class="row range"><label>k<sub>gap</sub> 范围</label><div class="range-cell"><input class="user" id="optRingGapKMin" type="number" value="0.30" step="0.01"><input class="user" id="optRingGapKMax" type="number" value="1.00" step="0.01"></div></div>
+            <div class="row range"><label>k<sub>expand</sub> 范围</label><div class="range-cell"><input class="user" id="optRingGapExpandKMin" type="number" value="0.30" step="0.01"><input class="user" id="optRingGapExpandKMax" type="number" value="1.00" step="0.01"></div></div>
+            <div class="row range"><label>k<sub>leak</sub> 范围</label><div class="range-cell"><input class="user" id="optLeakKMin" type="number" value="0.05" step="0.01"><input class="user" id="optLeakKMax" type="number" value="0.30" step="0.01"></div></div>
+            <div class="row range"><label>leakFull 范围 / mm²</label><div class="range-cell"><input class="user" id="optLeakFullMin" type="number" value="0.05" step="0.01"><input class="user" id="optLeakFullMax" type="number" value="1.00" step="0.01"></div></div>
+            <div class="row range"><label>K<sub>open</sub> 范围</label><div class="range-cell"><input class="user" id="optKopenMin" type="number" value="0.03" step="0.01"><input class="user" id="optKopenMax" type="number" value="0.30" step="0.01"></div></div>
             <button class="btn secondary" id="optCoeffBtn" type="button">优化紫色系数到目标窗口</button>
-            <div id="optimizeResult" class="opt-result">优化范围：k<sub>gap</sub>、k<sub>expand</sub>、k<sub>leak</sub>、leakFull、K<sub>open</sub>；不改变尺寸、槽几何和介入点。</div>
+            <div id="optimizeResult" class="opt-result">优化只在上方范围内搜索；不改变尺寸、槽几何和介入点。</div>
           </div>
         </details>
       </div>
@@ -752,20 +760,43 @@ function logSample(rand, min, max){
   return Math.exp(Math.log(min)+rand()*(Math.log(max)-Math.log(min)));
 }
 
-function clampCoeff(id, value){
-  const b=coeffBounds[id];
+function clampCoeff(id, value, bounds){
+  const b=bounds[id];
   return clamp(value, b.min, b.max);
 }
 
-const coeffBounds={
-  ringGapK:{min:0.015,max:1.20,digits:3,mode:'log'},
-  ringGapExpandK:{min:0.00,max:1.20,digits:3,mode:'linear'},
-  leakK:{min:0.00,max:0.30,digits:4,mode:'linear'},
-  leakFull:{min:0.001,max:2.00,digits:4,mode:'log'},
-  kopen:{min:0.003,max:0.30,digits:4,mode:'log'}
+const coeffDefs={
+  ringGapK:{minId:'optRingGapKMin',maxId:'optRingGapKMax',min:0.30,max:1.00,digits:3,mode:'log',label:'k_gap'},
+  ringGapExpandK:{minId:'optRingGapExpandKMin',maxId:'optRingGapExpandKMax',min:0.30,max:1.00,digits:3,mode:'linear',label:'k_expand'},
+  leakK:{minId:'optLeakKMin',maxId:'optLeakKMax',min:0.05,max:0.30,digits:4,mode:'linear',label:'k_leak'},
+  leakFull:{minId:'optLeakFullMin',maxId:'optLeakFullMax',min:0.05,max:1.00,digits:4,mode:'log',label:'leakFull'},
+  kopen:{minId:'optKopenMin',maxId:'optKopenMax',min:0.03,max:0.30,digits:4,mode:'log',label:'K_open'}
 };
 
-function makeCandidate(base, overrides){
+function readOptimizationBounds(){
+  const bounds={};
+  Object.keys(coeffDefs).forEach(function(k){
+    const def=coeffDefs[k];
+    let min=num(def.minId);
+    let max=num(def.maxId);
+    if(!Number.isFinite(min))min=def.min;
+    if(!Number.isFinite(max))max=def.max;
+    if(min>max){const t=min;min=max;max=t;}
+    if(def.mode==='log')min=Math.max(min,1e-6);
+    if(max<=min)max=min+(def.mode==='log'?min*0.01:1e-6);
+    bounds[k]={min,max,digits:def.digits,mode:def.mode,label:def.label};
+  });
+  return bounds;
+}
+
+function formatBounds(bounds){
+  return Object.keys(bounds).map(function(k){
+    const b=bounds[k];
+    return b.label+' '+fmt(b.min,b.digits)+'–'+fmt(b.max,b.digits);
+  }).join('；');
+}
+
+function makeCandidate(base, overrides, bounds){
   const c={
     ringGapK:base.ringGapK,
     ringGapExpandK:base.ringGapExpandK,
@@ -773,25 +804,26 @@ function makeCandidate(base, overrides){
     leakFull:base.leakFull,
     kopen:base.kopen
   };
-  Object.keys(overrides||{}).forEach(function(k){c[k]=clampCoeff(k, overrides[k]);});
+  Object.keys(c).forEach(function(k){c[k]=clampCoeff(k, c[k], bounds);});
+  Object.keys(overrides||{}).forEach(function(k){c[k]=clampCoeff(k, overrides[k], bounds);});
   return c;
 }
 
-function refineCandidate(base, best){
-  const keys=Object.keys(coeffBounds);
+function refineCandidate(base, best, bounds){
+  const keys=Object.keys(bounds);
   let current=best;
   const scales=[0.55,0.32,0.18,0.09,0.045];
   scales.forEach(function(scale){
     keys.forEach(function(k){
-      const b=coeffBounds[k];
+      const b=bounds[k];
       const vals=[];
       const v=current.coeff[k];
       if(b.mode==='log'&&v>0){
-        vals.push(clampCoeff(k, v*Math.exp(scale)));
-        vals.push(clampCoeff(k, v/Math.exp(scale)));
+        vals.push(clampCoeff(k, v*Math.exp(scale), bounds));
+        vals.push(clampCoeff(k, v/Math.exp(scale), bounds));
       }else{
-        vals.push(clampCoeff(k, v+(b.max-b.min)*scale));
-        vals.push(clampCoeff(k, v-(b.max-b.min)*scale));
+        vals.push(clampCoeff(k, v+(b.max-b.min)*scale, bounds));
+        vals.push(clampCoeff(k, v-(b.max-b.min)*scale, bounds));
       }
       vals.forEach(function(val){
         const cand=Object.assign({}, current.coeff);
@@ -806,13 +838,14 @@ function refineCandidate(base, best){
 
 function optimizeCoefficients(){
   const base=readParams();
+  const optBounds=readOptimizationBounds();
   const rand=lcg(20260524);
   const seeds=[
-    makeCandidate(base, {}),
-    makeCandidate(base, {ringGapK:0.05, leakK:0, leakFull:0.02, ringGapExpandK:0.6, kopen:0.10}),
-    makeCandidate(base, {ringGapK:0.08, leakK:0.01, leakFull:0.05, ringGapExpandK:0.3, kopen:0.05}),
-    makeCandidate(base, {ringGapK:0.15, leakK:0.02, leakFull:0.03, ringGapExpandK:0.15, kopen:0.02}),
-    makeCandidate(base, {ringGapK:0.03, leakK:0, leakFull:0.08, ringGapExpandK:1.0, kopen:0.20})
+    makeCandidate(base, {}, optBounds),
+    makeCandidate(base, {ringGapK:0.30, leakK:0.05, leakFull:0.05, ringGapExpandK:0.30, kopen:0.03}, optBounds),
+    makeCandidate(base, {ringGapK:0.45, leakK:0.08, leakFull:0.08, ringGapExpandK:0.50, kopen:0.08}, optBounds),
+    makeCandidate(base, {ringGapK:0.70, leakK:0.12, leakFull:0.15, ringGapExpandK:0.70, kopen:0.15}, optBounds),
+    makeCandidate(base, {ringGapK:1.00, leakK:0.20, leakFull:0.30, ringGapExpandK:1.00, kopen:0.30}, optBounds)
   ];
 
   let best=null;
@@ -824,18 +857,18 @@ function optimizeCoefficients(){
   seeds.forEach(consider);
   for(let i=0;i<260;i++){
     consider(makeCandidate(base, {
-      ringGapK:logSample(rand, coeffBounds.ringGapK.min, coeffBounds.ringGapK.max),
-      ringGapExpandK:coeffBounds.ringGapExpandK.min+rand()*(coeffBounds.ringGapExpandK.max-coeffBounds.ringGapExpandK.min),
-      leakK:coeffBounds.leakK.min+Math.pow(rand(),1.7)*(coeffBounds.leakK.max-coeffBounds.leakK.min),
-      leakFull:logSample(rand, coeffBounds.leakFull.min, coeffBounds.leakFull.max),
-      kopen:logSample(rand, coeffBounds.kopen.min, coeffBounds.kopen.max)
-    }));
+      ringGapK:logSample(rand, optBounds.ringGapK.min, optBounds.ringGapK.max),
+      ringGapExpandK:optBounds.ringGapExpandK.min+rand()*(optBounds.ringGapExpandK.max-optBounds.ringGapExpandK.min),
+      leakK:optBounds.leakK.min+Math.pow(rand(),1.7)*(optBounds.leakK.max-optBounds.leakK.min),
+      leakFull:logSample(rand, optBounds.leakFull.min, optBounds.leakFull.max),
+      kopen:logSample(rand, optBounds.kopen.min, optBounds.kopen.max)
+    }, optBounds));
   }
-  best=refineCandidate(base, best);
+  best=refineCandidate(base, best, optBounds);
 
-  Object.keys(coeffBounds).forEach(function(k){
+  Object.keys(optBounds).forEach(function(k){
     const el=$(k);
-    if(el)el.value=best.coeff[k].toFixed(coeffBounds[k].digits);
+    if(el)el.value=best.coeff[k].toFixed(optBounds[k].digits);
   });
   const data=buildData();
   render(data);
@@ -849,13 +882,14 @@ function optimizeCoefficients(){
     : '';
   $('optimizeResult').innerHTML=
     '<b>优化完成：</b> HRS峰值 '+fmt(data.target.force,0)+' N，目标窗口 '+fmt(bounds.lower,0)+'–'+fmt(bounds.upper,0)+' N，'+
-    (inWindow?'<span class="pill ok">进入窗口</span>':'<span class="pill bad">未进入窗口</span>')+
+    (inWindow?'<span class="pill ok">进入窗口</span>':'<span class="pill bad">范围内未进入窗口</span>')+
     '；左侧斜率 '+fmt(data.p.currentRiseSlope,1)+' N/mm（偏差 '+fmt(slopeErrPct,1)+'%）。<br>'+
     '系数：k_gap='+fmt(data.p.ringGapK,3)+
     '，k_expand='+fmt(data.p.ringGapExpandK,3)+
     '，k_leak='+fmt(data.p.leakK,4)+
     '，leakFull='+fmt(data.p.leakFull,4)+
     '，K_open='+fmt(data.p.kopen,4)+'。<br>'+
+    '约束范围：'+formatBounds(optBounds)+'。<br>'+
     '撑开压比 '+fmt(data.target.openPressureRatio,2)+
     '，残余径向间隙 '+fmt(data.target.radialGap,3)+' mm。'+slopeHint;
 }
