@@ -124,9 +124,11 @@
         <div class="card-title">1. HRS 基础结构参数</div>
         <div class="row"><label>活塞杆直径 d<sub>rod</sub> / mm</label><input class="user" id="rodD" type="number" value="25" step="0.1"></div>
         <div class="row"><label>套筒内径 D<sub>tube</sub> (=密封直径) / mm</label><input class="user" id="tubeID" type="number" value="32.5" step="0.01"></div>
-        <div class="row"><label>Ring 外径 D<sub>o</sub> / mm</label><input class="user" id="ringOD" type="number" value="32.15" step="0.01"></div>
-        <div class="row"><label>Ring 内径 D<sub>i</sub> / mm</label><input class="user" id="ringID" type="number" value="29" step="0.01"></div>
-        <div class="row"><label>Ring 高度 H<sub>ring</sub> / mm</label><input class="user" id="ringH" type="number" value="7.5" step="0.01"></div>
+        <div class="row"><label>套筒入口内径 D<sub>entry</sub> / mm</label><input class="user" id="entryID" type="number" value="35" step="0.01"></div>
+        <div class="row"><label>套筒内壁粗糙度 Rz / µm</label><input class="user" id="tubeRz" type="number" value="15" step="1"></div>
+        <div class="row"><label>浮动环外径 D<sub>o</sub> / mm</label><input class="user" id="ringOD" type="number" value="32.15" step="0.01"></div>
+        <div class="row"><label>浮动环内径 D<sub>i</sub> / mm</label><input class="user" id="ringID" type="number" value="29" step="0.01"></div>
+        <div class="row"><label>浮动环高度 H<sub>ring</sub> / mm</label><input class="user" id="ringH" type="number" value="7.5" step="0.01"></div>
         <div class="row"><label>几何径向壁厚 (D<sub>o</sub>−D<sub>i</sub>)/2 / mm</label><input class="auto" id="ringTgeom" type="number" readonly></div>
         <div class="row"><label>计算用径向厚度 t<sub>rad</sub> / mm</label><input class="user" id="ringTrad" type="number" value="1.575" step="0.01"></div>
         <div class="row"><label>径向厚度 t³ 相对刚度</label><input class="auto" id="radialStiffRelDisp" type="number" readonly></div>
@@ -164,8 +166,8 @@
         <div class="row"><label>槽有效高度 b / mm</label><input class="user" id="bleedH" type="number" value="0.203" step="0.001"></div>
         <div class="row"><label>Bleed 开口面积 n·a·b / mm²</label><input class="auto" id="bleedA" type="number" readonly></div>
 
-        <div class="section-sub">Ring 开口端隙（需实测/标定）</div>
-        <div class="row"><label>自由开口端隙 g<sub>0</sub> / mm　<span style="font-weight:400;color:#6b7280">（实测Ring自由状态端隙）</span></label><input class="user" id="ringGap0" type="number" value="0.20" step="0.01"></div>
+        <div class="section-sub">浮动环开口端隙（需实测/标定）</div>
+        <div class="row"><label>自由开口端隙 g<sub>0</sub> / mm　<span style="font-weight:400;color:#6b7280">（图纸0.25±0.25；下限按0处理）</span></label><input class="user" id="ringGap0" type="number" value="0.25" step="0.01"></div>
         <div class="row"><label>端隙几何有效系数 k<sub>gap</sub>　<span style="font-weight:400;color:#6b7280">（垂直贯通=1.0；图示斜切/圆角/遮挡建议0.3–0.8）</span></label><input class="adv" id="ringGapK" type="number" value="0.60" step="0.05"></div>
         <div class="row"><label>胀开后端隙增量系数 k<sub>expand</sub>　<span style="font-weight:400;color:#6b7280">（自由垂直开口≈0.8–1.0；图示斜切/止口建议0.4–0.8）</span></label><input class="adv" id="ringGapExpandK" type="number" value="0.60" step="0.05"></div>
 
@@ -219,15 +221,19 @@
           <summary>5. 尺寸和形位公差校核</summary>
           <div class="detail-body">
             <div class="row"><label>性能目标公差 / %</label><input class="user" id="perfTolPct" type="number" value="10" step="1"></div>
-            <div class="row"><label>套筒内径公差 ± / mm</label><input class="user" id="tolTubeID" type="number" value="0.05" step="0.01"></div>
-            <div class="row"><label>Ring 外径公差 ± / mm</label><input class="user" id="tolRingOD" type="number" value="0.03" step="0.01"></div>
-            <div class="row"><label>Ring 高度 H 公差 ± / mm</label><input class="user" id="tolRingH" type="number" value="0.05" step="0.01"></div>
-            <div class="row"><label>Ring 径向厚度 t<sub>rad</sub> 公差 ± / mm</label><input class="user" id="tolRingTrad" type="number" value="0.03" step="0.01"></div>
-            <div class="row"><label>Ring 自由端隙公差 ± / mm</label><input class="user" id="tolRingGap0" type="number" value="0.03" step="0.01"></div>
+            <div class="row range"><label>套筒内径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devTubeIDLow" type="number" value="0.09" step="0.01"><input class="user" id="devTubeIDHigh" type="number" value="0.13" step="0.01"></div></div>
+            <div class="row range"><label>入口内径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devEntryIDLow" type="number" value="-0.10" step="0.01"><input class="user" id="devEntryIDHigh" type="number" value="0.00" step="0.01"></div></div>
+            <div class="row range"><label>浮动环外径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devRingODLow" type="number" value="-0.10" step="0.01"><input class="user" id="devRingODHigh" type="number" value="0.10" step="0.01"></div></div>
+            <div class="row range"><label>浮动环内径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devRingIDLow" type="number" value="-0.10" step="0.01"><input class="user" id="devRingIDHigh" type="number" value="0.20" step="0.01"></div></div>
+            <div class="row range"><label>浮动环高度 H 偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devRingHLow" type="number" value="-0.10" step="0.01"><input class="user" id="devRingHHigh" type="number" value="0.10" step="0.01"></div></div>
+            <div class="row range"><label>开口缝隙偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devRingGap0Low" type="number" value="-0.25" step="0.01"><input class="user" id="devRingGap0High" type="number" value="0.25" step="0.01"></div></div>
+            <div class="row"><label>浮动环外径圆度 / mm</label><input class="user" id="ringODRoundness" type="number" value="0.10" step="0.01"></div>
+            <div class="row"><label>上下端面垂直度 / mm</label><input class="user" id="ringFacePerp" type="number" value="0.10" step="0.01"></div>
+            <div class="row"><label>上下外侧圆角 R max / mm</label><input class="user" id="ringOuterCornerR" type="number" value="0.50" step="0.01"></div>
             <div class="row"><label>Bleed 槽宽公差 ± / mm</label><input class="user" id="tolBleedW" type="number" value="0.02" step="0.005"></div>
             <div class="row"><label>Bleed 槽高公差 ± / mm</label><input class="user" id="tolBleedH" type="number" value="0.01" step="0.005"></div>
             <div class="row"><label>R9/R6 锥角公差 ± / °</label><input class="user" id="tolSlotAngle" type="number" value="0.10" step="0.01"></div>
-            <div class="row"><label>同轴度/位置度等效径向偏差 / mm</label><input class="user" id="geoPosTol" type="number" value="0.03" step="0.01"></div>
+            <div class="row"><label>形位等效径向偏差 / mm</label><input class="user" id="geoPosTol" type="number" value="0.05" step="0.01"></div>
           </div>
         </details>
       </div>
@@ -336,6 +342,13 @@ function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function peakPoint(pts){
   return pts.reduce(function(a,b){return b.force>=a.force-1e-6?b:a;}, pts[0]);
 }
+function tolPair(base, lowDev, highDev, minVal){
+  let lo=base+lowDev;
+  let hi=base+highDev;
+  if(lo>hi){const t=lo;lo=hi;hi=t;}
+  const min=Number.isFinite(minVal)?minVal:0;
+  return [Math.max(min,lo), Math.max(min,hi)];
+}
 function niceMax(v){
   if(!Number.isFinite(v)||v<=0)return 1;
   const e=Math.floor(Math.log10(v));
@@ -384,7 +397,8 @@ function slotPair(x, p){
 /* ── Read all parameters, compute derived values ── */
 function readParams(){
   const p={
-    rodD:num('rodD'), tubeID:num('tubeID'), ringOD:num('ringOD'), ringID:num('ringID'),
+    rodD:num('rodD'), tubeID:num('tubeID'), entryID:num('entryID'), tubeRz:num('tubeRz'),
+    ringOD:num('ringOD'), ringID:num('ringID'),
     ringH:num('ringH'), ringTrad:num('ringTrad'),
     eMod:num('eMod'), yieldMPa:num('yieldMPa'), pMax:num('pMax'),
     tubeL:num('tubeL'), guideL:num('guideL'), sOnTarget:num('sOnTarget'), strokeS:num('strokeS'),
@@ -400,9 +414,15 @@ function readParams(){
     riseSlopeTarget:num('riseSlopeTarget'), hrsVolL:num('hrsVolL'), bulkMPa:num('bulkMPa'),
     rho:num('rho'), nu:num('nu'), rgGap:num('rgGap'), rgLen:num('rgLen'), cd:num('cd'),
     vList:[num('v1'),num('v2'),num('v3')],
-    perfTolPct:num('perfTolPct'), tolTubeID:num('tolTubeID'), tolRingOD:num('tolRingOD'),
-    tolRingH:num('tolRingH'), tolRingTrad:num('tolRingTrad'),
-    tolRingGap0:num('tolRingGap0'), tolBleedW:num('tolBleedW'), tolBleedH:num('tolBleedH'),
+    perfTolPct:num('perfTolPct'),
+    devTubeIDLow:num('devTubeIDLow'), devTubeIDHigh:num('devTubeIDHigh'),
+    devEntryIDLow:num('devEntryIDLow'), devEntryIDHigh:num('devEntryIDHigh'),
+    devRingODLow:num('devRingODLow'), devRingODHigh:num('devRingODHigh'),
+    devRingIDLow:num('devRingIDLow'), devRingIDHigh:num('devRingIDHigh'),
+    devRingHLow:num('devRingHLow'), devRingHHigh:num('devRingHHigh'),
+    devRingGap0Low:num('devRingGap0Low'), devRingGap0High:num('devRingGap0High'),
+    ringODRoundness:num('ringODRoundness'), ringFacePerp:num('ringFacePerp'), ringOuterCornerR:num('ringOuterCornerR'),
+    tolBleedW:num('tolBleedW'), tolBleedH:num('tolBleedH'),
     tolSlotAngle:num('tolSlotAngle'), geoPosTol:num('geoPosTol'),
     kopen:num('kopen')
   };
@@ -411,6 +431,7 @@ function readParams(){
   p.ringTgeom=(p.ringOD-p.ringID)/2;
   p.clearance=Math.max((p.tubeID-p.ringOD)/2, 0);
   p.rMean=(p.ringOD+p.ringID)/4;
+  p.geoEffectiveTol=Math.max(p.geoPosTol, p.ringODRoundness/2, p.ringFacePerp/2);
   Object.assign(p, ringShapeFactors(p.ringTrad, p.ringH));
   p.Aeff=Math.PI*(p.tubeID*p.tubeID-p.rodD*p.rodD)/4;
   p.entryToGuide=p.tubeL-p.guideL;
@@ -1020,6 +1041,7 @@ function recalcParams(c, clearanceBias){
   c.ringTgeom=(c.ringOD-c.ringID)/2;
   c.clearance=Math.max((c.tubeID-c.ringOD)/2+(clearanceBias||0), 0);
   c.rMean=(c.ringOD+c.ringID)/4;
+  c.geoEffectiveTol=Math.max(c.geoPosTol, c.ringODRoundness/2, c.ringFacePerp/2);
   Object.assign(c, ringShapeFactors(c.ringTrad, c.ringH));
   c.Aeff=Math.PI*(c.tubeID*c.tubeID-c.rodD*c.rodD)/4;
   c.bleedA=c.bleedN*c.bleedW*c.bleedH;
@@ -1038,16 +1060,18 @@ function recalcParams(c, clearanceBias){
 
 function toleranceVariant(p, signs){
   const c=Object.assign({}, p);
-  c.tubeID=Math.max(0.1,p.tubeID+signs.tubeID*p.tolTubeID);
-  c.ringOD=Math.max(0.1,p.ringOD+signs.ringOD*p.tolRingOD);
-  c.ringH=Math.max(0.1,p.ringH+signs.ringH*p.tolRingH);
-  c.ringTrad=Math.max(0.05,p.ringTrad+signs.ringTrad*p.tolRingTrad);
-  c.ringGap0=Math.max(0,p.ringGap0+signs.ringGap0*p.tolRingGap0);
+  c.tubeID=signs.tubeID;
+  c.entryID=signs.entryID;
+  c.ringOD=signs.ringOD;
+  c.ringID=signs.ringID;
+  c.ringH=signs.ringH;
+  c.ringTrad=Math.max(0.05,(c.ringOD-c.ringID)/2);
+  c.ringGap0=signs.ringGap0;
   c.bleedW=Math.max(0,p.bleedW+signs.bleedW*p.tolBleedW);
   c.bleedH=Math.max(0,p.bleedH+signs.bleedH*p.tolBleedH);
   c.r9Angle=Math.max(0,p.r9Angle+signs.slotAngle*p.tolSlotAngle);
   c.r6Angle=Math.max(0,p.r6Angle+signs.slotAngle*p.tolSlotAngle);
-  return recalcParams(c, signs.geo*p.geoPosTol);
+  return recalcParams(c, signs.geo*p.geoEffectiveTol);
 }
 
 function analyzeTolerance(data){
@@ -1059,25 +1083,30 @@ function analyzeTolerance(data){
   let minCase=null, maxCase=null, count=0;
   const lowSeeds=[];
   const highSeeds=[];
+  const tubeIDVals=tolPair(p.tubeID,p.devTubeIDLow,p.devTubeIDHigh,0.1);
+  const ringODVals=tolPair(p.ringOD,p.devRingODLow,p.devRingODHigh,0.1);
+  const ringIDVals=tolPair(p.ringID,p.devRingIDLow,p.devRingIDHigh,0.1);
+  const ringHVals=tolPair(p.ringH,p.devRingHLow,p.devRingHHigh,0.1);
+  const ringGap0Vals=tolPair(p.ringGap0,p.devRingGap0Low,p.devRingGap0High,0);
   function keepSeed(list, item, dir){
     list.push(item);
     list.sort(function(a,b){return dir*(a.peak.force-b.peak.force);});
     if(list.length>8)list.length=8;
   }
 
-  signs.forEach(function(tubeID){
-  signs.forEach(function(ringOD){
-  signs.forEach(function(ringH){
-  signs.forEach(function(ringTrad){
-  signs.forEach(function(ringGap0){
+  tubeIDVals.forEach(function(tubeID){
+  ringODVals.forEach(function(ringOD){
+  ringIDVals.forEach(function(ringID){
+  ringHVals.forEach(function(ringH){
+  ringGap0Vals.forEach(function(ringGap0){
   signs.forEach(function(bleedW){
   signs.forEach(function(bleedH){
   signs.forEach(function(slotAngle){
   signs.forEach(function(geo){
-    const cand=toleranceVariant(p,{tubeID,ringOD,ringH,ringTrad,ringGap0,bleedW,bleedH,slotAngle,geo});
+    const cand=toleranceVariant(p,{tubeID,entryID:p.entryID,ringOD,ringID,ringH,ringGap0,bleedW,bleedH,slotAngle,geo});
     const coarse=Object.assign({}, cand, {targetModel:'steady'});
     const peak=buildRampSeries(coarse.vTarget, coarse, 'tol', 40).peak;
-    const item={cand,peak,signs:{tubeID,ringOD,ringH,ringTrad,ringGap0,bleedW,bleedH,slotAngle,geo}};
+    const item={cand,peak,signs:{tubeID,entryID:p.entryID,ringOD,ringID,ringH,ringGap0,bleedW,bleedH,slotAngle,geo}};
     count++;
     keepSeed(lowSeeds, item, 1);
     keepSeed(highSeeds, item, -1);
@@ -1209,8 +1238,11 @@ function render(data){
   const kvDefs=[
     ['A_eff 环形面积',fmt(p.Aeff,1)+' mm²',false],
     ['径向补偿间隙 c',fmt(p.clearance,3)+' mm',false],
+    ['套筒入口/粗糙度',fmt(p.entryID,2)+' mm / Rz'+fmt(p.tubeRz,0),false],
     ['径向厚度 t³相对刚度',fmt(p.radialStiffRel,2)+' ×',true],
     ['高度H泄流/密封系数',fmt(p.heightLeakFactor,2)+' ×',false],
+    ['形位等效径向偏差',fmt(p.geoEffectiveTol,3)+' mm',false],
+    ['外侧圆角R max',fmt(p.ringOuterCornerR,2)+' mm',false],
     ['Bleed 开口面积',fmt(p.bleedA,3)+' mm²',false],
     ['初始环隙泄漏面积',fmt(p.leakStartA,3)+' mm²',false],
     ['Ring 撑开阈值 p_close',fmt(Number.isFinite(p.pClose)?p.pClose:0,2)+' MPa',true],
