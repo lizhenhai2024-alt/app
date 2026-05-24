@@ -152,7 +152,8 @@
         <input id="sOnTarget" type="hidden" value="10">
         <input id="sOn" type="hidden" readonly>
         <div class="row"><label>对应初始 Ring 到导向座距离 / mm</label><input class="auto" id="startToGuide" type="number" readonly></div>
-        <div class="row"><label>复原拉伸总行程 S / mm</label><input class="user" id="strokeS" type="number" value="50" step="0.5"></div>
+        <div class="row"><label>复原拉伸总行程 S / mm</label><input class="user" id="strokeS" type="number" value="100" step="0.5"></div>
+        <div class="row"><label>Sin 振幅 A = S/2 / mm</label><input class="auto" id="sinAmpDisp" type="number" readonly></div>
         <div class="row"><label>缓冲垫高度 / mm</label><input class="user" id="bufferH" type="number" value="6" step="0.1"></div>
         <div class="row"><label>限位座高度 / mm</label><input class="user" id="seatH" type="number" value="10.5" step="0.1"></div>
         <div class="row"><label>Ring 上方零件长度 / mm</label><input class="auto" id="ringAbove" type="number" readonly></div>
@@ -284,7 +285,7 @@
             ⑨ <b>总泄流面积</b>：A<sub>total</sub> = A<sub>bleed</sub> + A<sub>gap</sub> + A<sub>R9</sub> + A<sub>R6</sub> + A<sub>entry</sub> + A<sub>radial</sub> + A<sub>residual</sub>。<br>
             ⑩ <b>稳态附加力</b>：求解 Q<sub>in</sub> = Q<sub>orifice</sub> + Q<sub>rg</sub> 得到 ΔP；无导向间隙泄漏时等价于 ΔP = ½ρ(Q<sub>in</sub>/C<sub>d</sub>/A<sub>total</sub>)²。F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
             ⑪ <b>导向间隙泄漏</b>：Q<sub>rg</sub> 使用偏心环形间隙黏性流模型；当 a<sub>rg</sub>=0 时关闭。<br>
-            ⑫ <b>Sin 采样</b>：θ 均匀采样，s = S/2·(1−cosθ)，v = v<sub>peak</sub>·sinθ，261 点。
+            ⑫ <b>Sin 采样</b>：S 为总行程，振幅 A=S/2；θ 均匀采样，s = S/2·(1−cosθ)，v = v<sub>peak</sub>·sinθ，261 点。
           </div>
         </details>
       </div>
@@ -442,6 +443,7 @@ function readParams(){
   p.startToGuide=p.entryToGuide+p.sOn;
   p.ringAbove=p.bufferH+p.seatH-p.ringH;
   p.totalTarget=p.baseDamping+p.fTarget;
+  p.sinAmp=p.strokeS/2;
 
   // Bleed area
   p.bleedA=p.bleedN*p.bleedW*p.bleedH;
@@ -478,6 +480,7 @@ function readParams(){
   setv('sOn', p.sOn, 2);
   setv('ringAbove', p.ringAbove, 2);
   setv('totalTarget', p.totalTarget, 0);
+  setv('sinAmpDisp', p.sinAmp, 2);
   setv('bleedA', p.bleedA, 3);
   setv('leakStartADisp', p.leakStartA, 3);
   setv('r9D0Disp', p.r9D0, 3);
