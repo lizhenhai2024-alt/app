@@ -99,7 +99,7 @@
 
 <header>
   <h1>HRS Ring 液压缓冲计算校核 v4</h1>
-  <p>目标/公差版：0.524m/s Ramp 恒速工况下校核 HRS 附加力 3000N，整车总力为基础阻尼力 + HRS 附加力；Sin 曲线仅作为对比。</p>
+  <p>目标/公差版：0.524m/s 恒速工况下校核 HRS 附加力 3000N，整车总力为基础阻尼力 + HRS 附加力；Sin 曲线仅作为对比。</p>
 </header>
 
 <main>
@@ -148,10 +148,10 @@
         <div class="card-title">2. 行程位置参数</div>
         <div class="row"><label>套筒总长度 L<sub>tube</sub> / mm</label><input class="user" id="tubeL" type="number" value="52" step="0.1"></div>
         <div class="row"><label>导向座衬套长度 L<sub>guide</sub> / mm</label><input class="user" id="guideL" type="number" value="12" step="0.1"></div>
-        <div class="row"><label>入口到导向座距离 L<sub>tube</sub>−L<sub>guide</sub> / mm</label><input class="auto" id="entryToGuide" type="number" readonly></div>
-        <input id="sOnTarget" type="hidden" value="10">
+        <div class="row"><label>行程中点到导向座距离 d<sub>mid</sub> / mm</label><input class="user" id="midToGuide" type="number" value="55" step="0.5"></div>
+        <div class="row"><label>行程上止点到导向座距离 d<sub>top</sub> / mm</label><input class="auto" id="topToGuide" type="number" readonly></div>
         <input id="sOn" type="hidden" readonly>
-        <div class="row"><label>对应初始 Ring 到导向座距离 / mm</label><input class="auto" id="startToGuide" type="number" readonly></div>
+        <div class="row"><label>HRS开始进入位移 s<sub>on</sub>=S/2 / mm</label><input class="auto" id="startToGuide" type="number" readonly></div>
         <div class="row"><label>复原拉伸总行程 S / mm</label><input class="user" id="strokeS" type="number" value="100" step="0.5"></div>
         <div class="row"><label>Sin 振幅 A = S/2 / mm</label><input class="auto" id="sinAmpDisp" type="number" readonly></div>
         <div class="row"><label>缓冲垫高度 / mm</label><input class="user" id="bufferH" type="number" value="6" step="0.1"></div>
@@ -198,7 +198,7 @@
       <!-- 4. 目标与速度 -->
       <div class="card">
         <div class="card-title">4. 目标曲线、油液与速度</div>
-        <div class="row"><label>目标恒定速度 v<sub>target</sub> / m/s（Ramp）</label><input class="user" id="vTarget" type="number" value="0.524" step="0.001"></div>
+        <div class="row"><label>目标恒定速度 v<sub>target</sub> / m/s</label><input class="user" id="vTarget" type="number" value="0.524" step="0.001"></div>
         <div class="row"><label>基础阻尼力 F<sub>damp</sub> @v<sub>target</sub> / N</label><input class="user" id="baseDamping" type="number" value="0" step="50"></div>
         <div class="row"><label>HRS 附加力目标 ΔF<sub>HRS</sub> / N</label><input class="user" id="fTarget" type="number" value="3000" step="50"></div>
         <div class="row"><label>目标总力 F<sub>total</sub>=F<sub>damp</sub>+ΔF / N</label><input class="auto" id="totalTarget" type="number" readonly></div>
@@ -251,10 +251,12 @@
               p<sub>close</sub> = K<sub>open</sub>·E·t<sub>rad</sub>·c/r²·(t<sub>rad</sub>/t<sub>ref</sub>)²。径向厚度按开口环截面弯曲刚度近似形成 t³ 影响；厚度越大，低压力越不容易撑开并关闭径向间隙。H<sub>ring</sub> 不直接线性乘入 p<sub>close</sub>，但会通过 sealRatio=(x/H<sub>ring</sub>)^1.35 和 A<sub>gap</sub>=k<sub>gap</sub>·H<sub>ring</sub>·g·sealRatio 影响起压速度和端隙泄流。图示 Ring 开口为斜切/圆角/局部遮挡，不是垂直贯通矩形缝，因此 k<sub>gap</sub> 应理解为投影到最窄通道后的等效面积系数，不能直接取全开 1.0。低压段用 ΔP·sealRatio/p<sub>close</sub> 判断 Ring 能否撑开；撑不开时保留残余径向间隙 c<sub>eff</sub>=c·(1−expandRatio)，并按该间隙计算未贴壁泄漏。K<sub>open</sub> 越小，Ring 越容易在低速胀开。<br><br>
               <b>尺寸敏感度：</b> t<sub>rad</sub> 主要改变 p<sub>close</sub>（约 t³），H<sub>ring</sub> 主要改变端隙泄流面积和密封建立长度；随后再看 k<sub>gap</sub> / g<sub>0</sub> / k<sub>leak</sub> → leakFull → K<sub>open</sub> → k<sub>expand</sub>。<br>
               <b>标定顺序：</b>
-              ① 用示功图实测峰值力反推总等效泄流面积 A_total；
+              ① 用恒速示功图实测 HRS 峰值力反推总等效泄流面积 A<sub>total</sub>；
               ② 实测 Ring 自由端隙 g<sub>0</sub> 代入；
               ③ 用低速（0.1～0.3 m/s）与高速（0.8～1.0 m/s）曲线对比，依次标定 k<sub>leak</sub>、k<sub>gap</sub>、leakFull；
-              ④ 最后用 1.5mm 与 2.0mm 壁厚起效速度差反标定 K<sub>open</sub>。<br>
+              ④ 用浮动环 FEA 得到 p<sub>close</sub>、expandRatio(ΔP)、接触/贴壁状态、开口闭合状态和环向应力，并反算 K<sub>open</sub>、k<sub>expand</sub>；
+              ⑤ 最后用 1.5mm 与 2.0mm 壁厚起效速度差，对比实测示功图和 FEA 起效压力，反标定 K<sub>open</sub>。<br>
+              <b>示功图 + FEA 结合：</b> 示功图用于反推 A<sub>total</sub> 和各速度下的等效泄流；FEA 用于约束 Ring 撑开、贴壁、开口是否闭合，避免 k<sub>leak</sub>、k<sub>gap</sub>、leakFull、K<sub>open</sub> 相互补偿出不合理参数。<br>
               <b style="color:#b91c1c">注意：所有紫色参数均为需实测标定的拟合系数，初始值为几何估算值，不代表实际力值。</b>
             </p>
             <div class="section-sub">优化约束范围（min / max）</div>
@@ -274,17 +276,17 @@
         <details>
           <summary>计算过程说明</summary>
           <div class="detail-body note">
-            ① <b>位移→进入深度</b>：x = max(0, s − s<sub>on</sub>)；s<sub>on</sub> = 初始Ring到导向座距离 − (L<sub>tube</sub>−L<sub>guide</sub>)。<br>
+            ① <b>位移→进入深度</b>：S 为总行程，s=S/2 为行程中点；行程中点到导向座距离 d<sub>mid</sub>=55mm，行程上止点距离 d<sub>top</sub>=5mm。HRS进入深度 x = max(0, s − S/2)。<br>
             ② <b>密封比</b>：sealRatio = (x/H<sub>ring</sub>)^1.35，x=0 时 sealRatio=0 → 附加力强制为0。<br>
             ③ <b>流量</b>：Q = A<sub>eff</sub> × v；建压有效流量 Q<sub>in</sub> = Q·sealRatio（m³/s）。<br>
             ④ <b>槽面积（圆弧段）</b>：d(x) = d₀·(1−x/L)^m，A_seg = R²·arccos[(R−d)/R] − (R−d)·√(2Rd−d²)，A_groove = N·A_seg。<br>
             ⑤ <b>低压撑开</b>：p<sub>close</sub> = K<sub>open</sub>·E·t<sub>rad</sub>·c/r²·(t<sub>rad</sub>/t<sub>ref</sub>)²；openRatio = ΔP·sealRatio/p<sub>close</sub>；expandRatio = clamp(openRatio<sup>1.15</sup>, 0, 1)。<br>
             ⑥ <b>径向间隙关闭</b>：c<sub>eff</sub> = c·(1−expandRatio)，A<sub>radial</sub> = π·D·c<sub>eff</sub>·k<sub>leak</sub>·sealRatio；低压力撑不开时该泄漏保留。<br>
-            ⑦ <b>端隙更新</b>：g = g₀ + k<sub>expand</sub>·2πc·expandRatio；k<sub>expand</sub> 表示理论圆周增量实际转化为开口端隙的比例，受端口斜切、止口、摩擦卡滞和局部约束影响。图示非垂直开口用 k<sub>gap</sub> 把斜切/圆角/遮挡折算为等效通流面积。<br>
+            ⑦ <b>端隙更新</b>：g = g₀ + k<sub>expand</sub>·2πc·expandRatio；k<sub>expand</sub> 表示理论圆周增量实际转化为开口端隙的比例，受端口斜切、止口、摩擦卡滞和局部约束影响。图示非垂直开口用 k<sub>gap</sub> 把斜切/圆角/遮挡折算为等效通流面积；贴壁后开口部位按闭合处理，A<sub>gap</sub>=0。<br>
             ⑧ <b>高度影响</b>：H<sub>ring</sub> 控制 sealRatio 的建立长度，同时 A<sub>gap</sub>=k<sub>gap</sub>·H<sub>ring</sub>·g·sealRatio；H 越大，端隙泄流面积越大，低进入深度起压越慢。<br>
             ⑨ <b>总泄流面积</b>：A<sub>total</sub> = A<sub>bleed</sub> + A<sub>gap</sub> + A<sub>R9</sub> + A<sub>R6</sub> + A<sub>entry</sub> + A<sub>radial</sub> + A<sub>residual</sub>。<br>
-            ⑩ <b>稳态附加力</b>：求解 Q<sub>in</sub> = Q<sub>orifice</sub> + Q<sub>rg</sub> 得到 ΔP；无导向间隙泄漏时等价于 ΔP = ½ρ(Q<sub>in</sub>/C<sub>d</sub>/A<sub>total</sub>)²。F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
-            ⑪ <b>导向间隙泄漏</b>：Q<sub>rg</sub> 使用偏心环形间隙黏性流模型；当 a<sub>rg</sub>=0 时关闭。<br>
+            ⑩ <b>稳态附加力</b>：导向座-杆间隙由中间密封环消除，求解 Q<sub>in</sub> = Q<sub>orifice</sub> 得到 ΔP；等价于 ΔP = ½ρ(Q<sub>in</sub>/C<sub>d</sub>/A<sub>total</sub>)²。F = sealRatio·ΔP·A<sub>eff</sub>（MPa·mm²=N）。<br>
+            ⑪ <b>导向间隙泄漏</b>：导向座-杆几何间隙只用于尺寸校核；因中间密封环阻断，不计入泄流通道。<br>
             ⑫ <b>Sin 采样</b>：S 为总行程，振幅 A=S/2；θ 均匀采样，s = S/2·(1−cosθ)，v = v<sub>peak</sub>·sinθ，261 点。
           </div>
         </details>
@@ -401,7 +403,7 @@ function readParams(){
     ringOD:num('ringOD'), ringID:num('ringID'),
     ringH:num('ringH'), ringTrad:num('ringTrad'),
     eMod:num('eMod'), yieldMPa:num('yieldMPa'), pMax:num('pMax'),
-    tubeL:num('tubeL'), guideL:num('guideL'), sOnTarget:num('sOnTarget'), strokeS:num('strokeS'),
+    tubeL:num('tubeL'), guideL:num('guideL'), midToGuide:num('midToGuide'), strokeS:num('strokeS'),
     bufferH:num('bufferH'), seatH:num('seatH'),
     bleedN:num('bleedN'), bleedW:num('bleedW'), bleedH:num('bleedH'),
     ringGap0:num('ringGap0'), ringGapK:num('ringGapK'), ringGapExpandK:num('ringGapExpandK'),
@@ -433,17 +435,19 @@ function readParams(){
   p.ringTgeom=(p.ringOD-p.ringID)/2;
   p.rgGap=Math.max((p.guideBushID-p.rodD)/2, 0);
   p.rgLen=p.guideL;
+  p.guideLeakSealed=true;
   p.clearance=Math.max((p.tubeID-p.ringOD)/2, 0);
   p.rMean=(p.ringOD+p.ringID)/4;
   p.geoEffectiveTol=Math.max(p.geoPosTol, p.ringODRoundness/2, p.ringFacePerp/2);
   Object.assign(p, ringShapeFactors(p.ringTrad, p.ringH));
   p.Aeff=Math.PI*(p.tubeID*p.tubeID-p.rodD*p.rodD)/4;
-  p.entryToGuide=p.tubeL-p.guideL;
-  p.sOn=Math.round(p.sOnTarget/5)*5;
-  p.startToGuide=p.entryToGuide+p.sOn;
   p.ringAbove=p.bufferH+p.seatH-p.ringH;
   p.totalTarget=p.baseDamping+p.fTarget;
   p.sinAmp=p.strokeS/2;
+  p.sOn=p.sinAmp;
+  p.startToGuide=p.sOn;
+  p.topToGuide=p.midToGuide-p.sinAmp;
+  p.entryToGuide=p.tubeL-p.guideL;
 
   // Bleed area
   p.bleedA=p.bleedN*p.bleedW*p.bleedH;
@@ -475,7 +479,7 @@ function readParams(){
   setv('heightLeakFactorDisp', p.heightLeakFactor, 3);
   setv('clearanceDisp', p.clearance, 3);
   setv('rMeanDisp', p.rMean, 3);
-  setv('entryToGuide', p.entryToGuide, 2);
+  setv('topToGuide', p.topToGuide, 2);
   setv('startToGuide', p.startToGuide, 2);
   setv('sOn', p.sOn, 2);
   setv('ringAbove', p.ringAbove, 2);
@@ -504,6 +508,7 @@ function readParams(){
    · Residual leak after full closure ── */
 function physPoint(s, v, p){
   const x=Math.max(0, s-p.sOn);
+  const guideDist=Number.isFinite(p.midToGuide)?p.midToGuide-(s-p.sinAmp):NaN;
 
   // Pre-entry or zero speed: no HRS force
   if(x<=0||v<=0){
@@ -511,7 +516,7 @@ function physPoint(s, v, p){
             openPressureRatio:0,radialGap:p.clearance,radialLeak:0,
             gapWidth:p.ringGap0,gapArea:0,unseated:0,entryLeak:0,
             slotR9:0,slotR6:0,totalA:p.bleedA+p.leakFull,
-            qLmin:0,stress:0,state:'未进入'};
+            qLmin:0,stress:0,guideDist,state:'未进入'};
   }
 
   // Seal ratio: how well ring creates a pressure chamber (0 at entry, 1 when fully inside)
@@ -546,7 +551,7 @@ function physPoint(s, v, p){
   for(let iter=0; iter<30; iter++){
     radialGap=p.clearance*(1-expandRatio);
     gapWidth=p.ringGap0+p.ringGapExpandK*2*Math.PI*p.clearance*expandRatio;
-    gapArea=p.ringGapK*p.ringH*Math.max(gapWidth,0)*sealRatio;
+    gapArea=endGapLeakArea(gapWidth, sealRatio, expandRatio, p);
     radialLeak=Math.PI*p.tubeID*radialGap*p.leakK*sealRatio;
     totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+radialLeak+p.leakFull;
 
@@ -564,7 +569,7 @@ function physPoint(s, v, p){
 
   radialGap=p.clearance*(1-expandRatio);
   gapWidth=p.ringGap0+p.ringGapExpandK*2*Math.PI*p.clearance*expandRatio;
-  gapArea=p.ringGapK*p.ringH*Math.max(gapWidth,0)*sealRatio;
+  gapArea=endGapLeakArea(gapWidth, sealRatio, expandRatio, p);
   radialLeak=Math.PI*p.tubeID*radialGap*p.leakK*sealRatio;
   totalA=p.bleedA+gapArea+slots.r9+slots.r6+entryLeak+radialLeak+p.leakFull;
 
@@ -582,7 +587,7 @@ function physPoint(s, v, p){
 
   return {s,v,x,force,dpMPa,sealRatio,expandRatio,openPressureRatio,
           radialGap,radialLeak,gapWidth,gapArea,unseated:radialLeak,
-          entryLeak,slotR9:slots.r9,slotR6:slots.r6,totalA,qLmin,stress,state};
+          entryLeak,slotR9:slots.r9,slotR6:slots.r6,totalA,qLmin,stress,guideDist,state};
 }
 
 function ringOpenPressureRatio(dpMPa, sealRatio, p){
@@ -595,6 +600,11 @@ function expandRatioFromPressure(openPressureRatio){
   return clamp(Math.pow(Math.max(openPressureRatio,0),1.15), 0, 1);
 }
 
+function endGapLeakArea(gapWidth, sealRatio, expandRatio, p){
+  if(expandRatio>=0.95)return 0;
+  return p.ringGapK*p.ringH*Math.max(gapWidth,0)*sealRatio;
+}
+
 function orificeOutflowM3s(totalA, dpMPa, p){
   if(dpMPa<=0||p.cd<=0)return 0;
   const areaM2=Math.max(totalA,0.001)*1e-6;
@@ -602,6 +612,7 @@ function orificeOutflowM3s(totalA, dpMPa, p){
 }
 
 function rodGuideLeakM3s(dpMPa, p){
+  if(p.guideLeakSealed!==false)return 0;
   if(dpMPa<=0||p.rgGap<=0||p.rgLen<=0||p.nu<=0||p.rho<=0)return 0;
   const w=Math.PI*Math.max(p.rodD,0)*1e-3;
   const a=p.rgGap*1e-3;
@@ -646,27 +657,27 @@ function buildSinSeries(vPeak, p, name, stepOverride){
   return {name:name||fmt(vPeak,1)+' m/s', vPeak, points:pts, peak};
 }
 
-function buildRampSeries(vRamp, p, name, stepOverride){
+function buildConstantSpeedSeries(vConst, p, name, stepOverride){
   const steps=stepOverride||260;
   const pts=[];
   for(let i=0;i<=steps;i++){
     const s=p.strokeS*i/steps;
-    pts.push(physPoint(s, vRamp, p));
+    pts.push(physPoint(s, vConst, p));
   }
   const peak=peakPoint(pts);
-  return {name:name||('目标Ramp '+fmt(vRamp,3)+' m/s'), vPeak:vRamp, points:pts, peak};
+  return {name:name||('目标恒速 '+fmt(vConst,3)+' m/s'), vPeak:vConst, points:pts, peak};
 }
 
 /* ── Build all data ── */
 function buildData(){
   const p=readParams();
-  const targetSeries=buildRampSeries(p.vTarget, p, '目标Ramp '+fmt(p.vTarget,3)+' m/s');
+  const targetSeries=buildConstantSpeedSeries(p.vTarget, p, '目标恒速 '+fmt(p.vTarget,3)+' m/s');
   targetSeries.isTarget=true;
   const series=[targetSeries].concat(
     p.vList
       .map(function(vPeak){return buildSinSeries(vPeak, p);})
   );
-  // Requirement check: only the maximum HRS additional force at target constant Ramp speed is compared with 3000N.
+  // Requirement check: only the maximum HRS additional force at target constant speed is compared with 3000N.
   const target=targetSeries.peak;
   return {p, series, target};
 }
@@ -684,7 +695,7 @@ function cloneParamsWithCoeffs(base, coeff){
 
 function candidateScore(base, coeff, steps){
   const p=cloneParamsWithCoeffs(base, coeff);
-  const series=buildRampSeries(p.vTarget, p, 'opt', steps||120);
+  const series=buildConstantSpeedSeries(p.vTarget, p, 'opt', steps||120);
   const peak=series.peak;
   const slope=peak.s>p.sOn ? peak.force/(peak.s-p.sOn) : Infinity;
   const tolBand=Math.max(p.fTarget*p.perfTolPct/100, p.fTarget*0.05, 1);
@@ -947,6 +958,11 @@ function recalcParams(c, clearanceBias){
   c.ringTgeom=(c.ringOD-c.ringID)/2;
   c.rgGap=Math.max((c.guideBushID-c.rodD)/2, 0);
   c.rgLen=c.guideL;
+  c.guideLeakSealed=true;
+  c.sinAmp=c.strokeS/2;
+  c.sOn=c.sinAmp;
+  c.startToGuide=c.sOn;
+  c.topToGuide=c.midToGuide-c.sinAmp;
   c.clearance=Math.max((c.tubeID-c.ringOD)/2+(clearanceBias||0), 0);
   c.rMean=(c.ringOD+c.ringID)/4;
   c.geoEffectiveTol=Math.max(c.geoPosTol, c.ringODRoundness/2, c.ringFacePerp/2);
@@ -1018,7 +1034,7 @@ function analyzeTolerance(data){
   signs.forEach(function(slotAngle){
   signs.forEach(function(geo){
     const cand=toleranceVariant(p,{rodD,guideBushID,tubeID,entryID:p.entryID,ringOD,ringID,ringH,ringGap0,bleedW,bleedH,slotAngle,geo});
-    const peak=buildRampSeries(cand.vTarget, cand, 'tol', 12).peak;
+    const peak=buildConstantSpeedSeries(cand.vTarget, cand, 'tol', 12).peak;
     const item={cand,peak,signs:{rodD,guideBushID,tubeID,entryID:p.entryID,ringOD,ringID,ringH,ringGap0,bleedW,bleedH,slotAngle,geo}};
     count++;
     keepSeed(lowSeeds, item, 1);
@@ -1026,7 +1042,7 @@ function analyzeTolerance(data){
   });});});});});});});});});});});
 
   lowSeeds.concat(highSeeds).forEach(function(item){
-    const peak=buildRampSeries(item.cand.vTarget, item.cand, 'tol').peak;
+    const peak=buildConstantSpeedSeries(item.cand.vTarget, item.cand, 'tol').peak;
     const refined={cand:item.cand,peak,signs:item.signs};
     if(!minCase||peak.force<minCase.peak.force)minCase=refined;
     if(!maxCase||peak.force>maxCase.peak.force)maxCase=refined;
@@ -1060,7 +1076,7 @@ function renderRequirementAudit(data){
   el.innerHTML=
     '<div class="audit">'+
     '<div class="audit-title">HRS 目标与公差校核</div>'+
-    '<div class="audit-text">要求解释：只在 v='+fmt(p.vTarget,3)+' m/s Ramp 恒速工况校核最大 HRS 附加力；Sin 曲线仅作为对比。总力目标为基础阻尼力 '+fmt(p.baseDamping,0)+' N + HRS 附加力 '+fmt(p.fTarget,0)+' N = '+fmt(p.totalTarget,0)+' N。</div>'+
+    '<div class="audit-text">要求解释：只在 v='+fmt(p.vTarget,3)+' m/s 恒速工况校核最大 HRS 附加力；Sin 曲线仅作为对比。总力目标为基础阻尼力 '+fmt(p.baseDamping,0)+' N + HRS 附加力 '+fmt(p.fTarget,0)+' N = '+fmt(p.totalTarget,0)+' N。</div>'+
     '<table class="mini-table"><thead><tr><th>项目</th><th>计算值</th><th>目标/窗口</th><th>判断</th></tr></thead><tbody>'+
     '<tr><td>0.524m/s HRS峰值</td><td>'+fmt(r.force,0)+' N</td><td>'+fmt(bounds.lower,0)+'–'+fmt(bounds.upper,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'超出')+'</span></td></tr>'+
     '<tr><td>总力峰值</td><td>'+fmt(totalNominal,0)+' N</td><td>'+fmt(bounds.totalLower,0)+'–'+fmt(bounds.totalUpper,0)+' N</td><td><span class="pill '+targetCls+'">'+(targetPass?'满足':'超出')+'</span></td></tr>'+
@@ -1068,7 +1084,7 @@ function renderRequirementAudit(data){
     '<tr><td>生产公差性能波动</td><td>'+fmt(tol.maxDevPct,1)+'%</td><td>±'+fmt(p.perfTolPct,0)+'%</td><td><span class="pill '+tolCls+'">'+(tol.pass?'满足':'超差')+'</span></td></tr>'+
     '</tbody></table>'+
     '<div class="audit-text" style="margin-top:7px">公差扫描 '+tol.count+' 组最坏组合：HRS附加力最小 '+fmt(tol.minCase.peak.force,0)+' N，最大 '+fmt(tol.maxCase.peak.force,0)+' N；对应总力范围 '+fmt(totalMin,0)+'–'+fmt(totalMax,0)+' N。±'+fmt(p.perfTolPct,0)+'% 名义窗口为 '+fmt(tol.lower,0)+'–'+fmt(tol.upper,0)+' N。</div>'+
-    '<div class="audit-text" style="margin-top:6px">图中只保留一个目标：HRS附加力目标水平线；目标Ramp按恒定速度计算，Sin曲线速度随位移变化，仅用于对比。</div>'+
+    '<div class="audit-text" style="margin-top:6px">图中只保留一个目标：HRS附加力目标水平线；目标恒速曲线按恒定速度计算，Sin曲线速度随位移变化，仅用于对比。</div>'+
     '</div>';
 }
 
@@ -1159,6 +1175,7 @@ function render(data){
   const kvDefs=[
     ['A_eff 环形面积',fmt(p.Aeff,1)+' mm²',false],
     ['导向座-杆径向间隙',fmt(p.rgGap,3)+' mm  / L='+fmt(p.rgLen,1)+' mm',p.rgGap>0],
+    ['中点/上止点距导向座',fmt(p.midToGuide,1)+' / '+fmt(p.topToGuide,1)+' mm',true],
     ['径向补偿间隙 c',fmt(p.clearance,3)+' mm',false],
     ['套筒入口/粗糙度',fmt(p.entryID,2)+' mm / Rz'+fmt(p.tubeRz,0),false],
     ['径向厚度 t³相对刚度',fmt(p.radialStiffRel,2)+' ×',true],
