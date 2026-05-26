@@ -92,6 +92,11 @@
     details[open] summary::before{content:'▼ '}
     details .detail-body{margin-top:8px}
 
+    .page-tabs{max-width:1660px;margin:0 auto;padding:10px 16px 0;display:flex;gap:6px;flex-wrap:wrap}
+    .page-tab{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer}
+    .page-tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+    .page-hidden{display:none!important}
+
     @media(max-width:1100px){.layout{grid-template-columns:1fr}.charts{grid-template-columns:1fr}}
   </style>
 </head>
@@ -102,6 +107,15 @@
   <p>目标/公差版：0.524m/s 恒速工况下校核 HRS 附加力 3000N，整车总力为基础阻尼力 + HRS 附加力；Sin 曲线仅作为对比。</p>
 </header>
 
+<nav class="page-tabs" aria-label="页面导航">
+  <button class="page-tab active" type="button" data-page-target="parameters">结构参数</button>
+  <button class="page-tab" type="button" data-page-target="results">曲线结果</button>
+  <button class="page-tab" type="button" data-page-target="model">模型标定</button>
+  <button class="page-tab" type="button" data-page-target="calibration">实测标定</button>
+  <button class="page-tab" type="button" data-page-target="tolerance">公差校核</button>
+  <button class="page-tab" type="button" data-page-target="docs">计算说明</button>
+</nav>
+
 <main>
   <div class="layout">
 
@@ -109,7 +123,7 @@
     <section>
 
       <!-- 颜色说明 + 按钮 -->
-      <div class="card">
+      <div class="card" data-page="common">
         <div class="card-title">参数颜色说明</div>
         <div class="legend">
           <span class="tag"><span class="dot inputdot"></span>黄色：需输入/可调</span>
@@ -120,7 +134,7 @@
       </div>
 
       <!-- 1. 结构参数 -->
-      <div class="card">
+      <div class="card" data-page="parameters">
         <div class="card-title">1. HRS 基础结构参数</div>
         <div class="row"><label>活塞杆直径 d<sub>rod</sub> / mm</label><input class="user" id="rodD" type="number" value="25" step="0.1"></div>
         <div class="row"><label>套筒内径 D<sub>tube</sub> (=密封直径) / mm</label><input class="user" id="tubeID" type="number" value="32.5" step="0.01"></div>
@@ -142,7 +156,7 @@
       </div>
 
       <!-- 2. 行程位置 -->
-      <div class="card">
+      <div class="card" data-page="parameters">
         <div class="card-title">2. 行程位置参数</div>
         <div class="row"><label>套筒总长度 L<sub>tube</sub> / mm</label><input class="user" id="tubeL" type="number" value="52" step="0.1"></div>
         <div class="row"><label>导向座配合长度 L<sub>fit</sub>（进入套管内部） / mm</label><input class="user" id="guideFitL" type="number" value="7" step="0.1"></div>
@@ -158,7 +172,7 @@
       </div>
 
       <!-- 3. 泄流与槽 -->
-      <div class="card">
+      <div class="card" data-page="parameters">
         <div class="card-title">3. 泄流通道参数</div>
 
         <div class="section-sub">多槽阀片 Bleed</div>
@@ -194,7 +208,7 @@
       </div>
 
       <!-- 4. 目标与速度 -->
-      <div class="card">
+      <div class="card" data-page="parameters">
         <div class="card-title">4. 目标曲线、油液与速度</div>
         <div class="row"><label>目标恒定速度 v<sub>target</sub> / m/s</label><input class="user" id="vTarget" type="number" value="0.524" step="0.001"></div>
         <div class="row"><label>基础阻尼力 F<sub>damp</sub> @v<sub>target</sub> / N</label><input class="user" id="baseDamping" type="number" value="0" step="50"></div>
@@ -210,7 +224,7 @@
       </div>
 
       <!-- 5. 尺寸和形位公差 -->
-      <div class="card">
+      <div class="card" data-page="tolerance">
         <details open>
           <summary>5. 尺寸和形位公差校核</summary>
           <div class="detail-body">
@@ -234,7 +248,7 @@
       </div>
 
       <!-- 6. 标定参数 -->
-      <div class="card">
+      <div class="card" data-page="model">
         <details open>
           <summary>6. 模型标定参数</summary>
           <div class="detail-body">
@@ -268,8 +282,33 @@
         </details>
       </div>
 
+      <!-- 7. 标定参数计算 -->
+      <div class="card" data-page="calibration">
+        <details open>
+          <summary>7. 标定参数计算</summary>
+          <div class="detail-body">
+            <p class="note">
+              标定前必须先选清楚工况类型：<b>恒速</b>表示整段行程速度固定，输入速度就是全行程恒定速度；<b>Sin</b>表示位移和速度按正弦规律变化，输入速度是峰值速度。两种曲线不能混用，否则反算出的 K<sub>trans</sub>、L<sub>trans</sub> 和 leakFull 会偏离。
+            </p>
+            <div class="row"><label>标定工况类型</label><select class="user" id="calMode"><option value="constant" selected>恒速：输入速度为全行程恒定速度</option><option value="sin">Sin：输入速度为峰值速度</option></select></div>
+            <div class="row"><label>实测速度 / m/s</label><input class="user" id="calVelocity" type="number" value="0.524" step="0.001"></div>
+            <div class="row"><label>实测进入高点位移 s<sub>peak</sub> / mm</label><input class="user" id="calPeakS" type="number" value="80" step="0.1"></div>
+            <div class="row"><label>实测进入高点力 F<sub>peak</sub> / N</label><input class="user" id="calPeakF" type="number" value="1600" step="10"></div>
+            <div class="row"><label>实测末端位移 s<sub>end</sub> / mm</label><input class="user" id="calEndS" type="number" value="100" step="0.1"></div>
+            <div class="row"><label>实测末端力 F<sub>end</sub> / N</label><input class="user" id="calEndF" type="number" value="800" step="10"></div>
+            <div class="section-sub">反算建议值</div>
+            <div class="row"><label>建议 K<sub>trans</sub></label><input class="auto" id="calSuggestedTransientGain" type="number" readonly></div>
+            <div class="row"><label>建议 L<sub>trans</sub> / mm</label><input class="auto" id="calSuggestedTransientDecay" type="number" readonly></div>
+            <div class="row"><label>建议 leakFull / mm²</label><input class="auto" id="calSuggestedLeakFull" type="number" readonly></div>
+            <button class="btn secondary" id="calibrateBtn" type="button">计算标定参数</button>
+            <button class="btn" id="applyCalibrationBtn" type="button">应用建议参数并重新计算</button>
+            <div id="calibrateResult" class="opt-result">请先选择“恒速”或“Sin”，再输入实测高点和末端数据。</div>
+          </div>
+        </details>
+      </div>
+
       <!-- 计算说明 -->
-      <div class="card">
+      <div class="card" data-page="docs">
         <details>
           <summary>计算过程说明</summary>
           <div class="detail-body note">
@@ -295,7 +334,7 @@
     <!-- ══ RIGHT PANEL ══ -->
     <section>
 
-      <div class="charts">
+      <div class="charts" data-page="results">
         <div class="chart-wrap">
           <div class="card-title">F-S 曲线：HRS附加力 vs 复原拉伸位移（Sin对比）</div>
           <canvas id="fsChart"></canvas>
@@ -314,7 +353,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" data-page="results">
         <div class="card-title">关键结果</div>
         <div id="passLine" style="margin-bottom:10px"></div>
         <div id="requirementAudit"></div>
@@ -338,6 +377,25 @@ function val(id){const e=$(id);return e?e.value:''}
 function setv(id,v,d){const e=$(id);if(e)e.value=Number.isFinite(v)?v.toFixed(d):''}
 function fmt(v,d){return Number.isFinite(v)?Number(v).toFixed(d):'-'}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function showPage(page){
+  if(!document.querySelectorAll)return;
+  const active=page||'parameters';
+  document.querySelectorAll('[data-page]').forEach(function(el){
+    const scope=el.getAttribute('data-page');
+    el.classList.toggle('page-hidden', scope!=='common'&&scope!==active);
+  });
+  document.querySelectorAll('[data-page-target]').forEach(function(btn){
+    btn.classList.toggle('active', btn.getAttribute('data-page-target')===active);
+  });
+  try{render(buildData());}catch(e){}
+}
+function initPageTabs(){
+  if(!document.querySelectorAll)return;
+  document.querySelectorAll('[data-page-target]').forEach(function(btn){
+    btn.addEventListener('click', function(){showPage(btn.getAttribute('data-page-target'));});
+  });
+  showPage('parameters');
+}
 function hrsEntryDisplacement(midToGuide, sinAmp, entryToGuide, strokeS){
   const raw=midToGuide+sinAmp-entryToGuide;
   return clamp(raw, 0, Math.max(strokeS,0));
@@ -858,6 +916,145 @@ function optimizeCoefficients(){
     '，残余径向间隙 '+fmt(data.target.radialGap,3)+' mm。';
 }
 
+function calibrationModeLabel(mode){
+  return mode==='sin'?'Sin':'恒速';
+}
+
+function buildCalibrationSeries(mode, velocity, p, name, steps){
+  return mode==='sin'
+    ? buildSinSeries(velocity, p, name||'Sin标定', steps||260)
+    : buildConstantSpeedSeries(velocity, p, name||'恒速标定', steps||260);
+}
+
+function interpolateAtS(points, s){
+  if(!points.length)return null;
+  if(s<=points[0].s)return points[0];
+  for(let i=1;i<points.length;i++){
+    const a=points[i-1], b=points[i];
+    if(s<=b.s){
+      const t=(s-a.s)/Math.max(b.s-a.s,1e-9);
+      const mix=function(k){return a[k]+(b[k]-a[k])*t;};
+      return {
+        s, force:mix('force'), x:mix('x'), sealRatio:mix('sealRatio'),
+        dpMPa:mix('dpMPa'), totalA:mix('totalA')
+      };
+    }
+  }
+  return points[points.length-1];
+}
+
+function transformedForce(point, gain, decay){
+  return point.force*(1+gain*Math.sqrt(Math.max(point.sealRatio,0))*Math.exp(-Math.max(point.x,0)/Math.max(decay,0.001)));
+}
+
+function transformedPeak(points, gain, decay){
+  return points.reduce(function(best, point){
+    const force=transformedForce(point, gain, decay);
+    return force>=best.force?{s:point.s,x:point.x,force}:best;
+  }, {s:0,x:0,force:-Infinity});
+}
+
+function logError(pred, target){
+  if(pred<=0||target<=0)return 1e6;
+  const e=Math.log(pred/target);
+  return e*e;
+}
+
+function logRange(min, max, count){
+  const vals=[];
+  for(let i=0;i<count;i++){
+    const t=count<=1?0:i/(count-1);
+    vals.push(Math.exp(Math.log(min)+t*(Math.log(max)-Math.log(min))));
+  }
+  return vals;
+}
+
+let lastCalibrationSuggestion=null;
+
+function computeCalibrationSuggestion(base, mode, velocity, sPeak, fPeak, sEnd, fEnd){
+  let best=null;
+  const leakVals=logRange(0.03, 5, 34);
+  const decayVals=[];
+  for(let d=3;d<=40;d+=1)decayVals.push(d);
+
+  leakVals.forEach(function(leakFull){
+    const p=cloneParamsWithCoeffs(base, {leakFull, transientGain:0});
+    const baseSeries=buildCalibrationSeries(mode, velocity, p, 'cal-base', 260);
+    const peakPoint=interpolateAtS(baseSeries.points, sPeak);
+    const endPoint=interpolateAtS(baseSeries.points, sEnd);
+    if(!peakPoint||!endPoint||peakPoint.force<=0)return;
+
+    decayVals.forEach(function(decay){
+      const aPeak=Math.sqrt(Math.max(peakPoint.sealRatio,0))*Math.exp(-Math.max(peakPoint.x,0)/decay);
+      const aEnd=Math.sqrt(Math.max(endPoint.sealRatio,0))*Math.exp(-Math.max(endPoint.x,0)/decay);
+      if(aPeak<=1e-9)return;
+      const gain=clamp((fPeak/peakPoint.force-1)/aPeak, 0, 40);
+      const predPeak=peakPoint.force*(1+gain*aPeak);
+      const predEnd=endPoint.force*(1+gain*aEnd);
+      const modelPeak=transformedPeak(baseSeries.points, gain, decay);
+      const posErr=Math.pow((modelPeak.s-sPeak)/Math.max(base.strokeS,1),2);
+      const loss=3*logError(predPeak, fPeak)+3*logError(predEnd, fEnd)+0.5*posErr;
+      if(!best||loss<best.loss){
+        best={loss, mode, velocity, leakFull, transientGain:gain, transientDecay:decay,
+              predPeak, predEnd, modelPeak, sPeak, fPeak, sEnd, fEnd};
+      }
+    });
+  });
+  return best;
+}
+
+function runCalibration(){
+  const mode=val('calMode')==='sin'?'sin':'constant';
+  const velocity=num('calVelocity');
+  const sPeak=num('calPeakS');
+  const fPeak=num('calPeakF');
+  const sEnd=num('calEndS');
+  const fEnd=num('calEndF');
+  const label=calibrationModeLabel(mode);
+  const el=$('calibrateResult');
+
+  if(velocity<=0||fPeak<=0||fEnd<=0||sEnd<=sPeak){
+    if(el)el.innerHTML='<span class="pill bad">输入无效</span> 请确认速度、力值为正，且 s_end 大于 s_peak。';
+    return null;
+  }
+
+  const base=readParams();
+  const suggestion=computeCalibrationSuggestion(base, mode, velocity, sPeak, fPeak, sEnd, fEnd);
+  lastCalibrationSuggestion=suggestion;
+  if(!suggestion){
+    if(el)el.innerHTML='<span class="pill bad">无法反算</span> 当前输入下没有找到有效标定组合。';
+    return null;
+  }
+
+  setv('calSuggestedTransientGain', suggestion.transientGain, 3);
+  setv('calSuggestedTransientDecay', suggestion.transientDecay, 2);
+  setv('calSuggestedLeakFull', suggestion.leakFull, 4);
+  if(el){
+    el.innerHTML=
+      '<b>'+label+'标定结果：</b> '+(mode==='sin'?'输入速度按峰值速度处理。':'输入速度按全行程恒定速度处理。')+'<br>'+
+      '建议 K_trans='+fmt(suggestion.transientGain,3)+
+      '，L_trans='+fmt(suggestion.transientDecay,2)+' mm'+
+      '，leakFull='+fmt(suggestion.leakFull,4)+' mm²。<br>'+
+      '模型高点 '+fmt(suggestion.modelPeak.force,0)+' N @ s='+fmt(suggestion.modelPeak.s,1)+' mm；'+
+      '输入高点 '+fmt(fPeak,0)+' N @ s='+fmt(sPeak,1)+' mm；'+
+      '末端预测 '+fmt(suggestion.predEnd,0)+' N，输入末端 '+fmt(fEnd,0)+' N。';
+  }
+  return suggestion;
+}
+
+function applyCalibrationSuggestion(){
+  const suggestion=lastCalibrationSuggestion||runCalibration();
+  if(!suggestion)return;
+  $('transientGain').value=suggestion.transientGain.toFixed(3);
+  $('transientDecay').value=suggestion.transientDecay.toFixed(2);
+  $('leakFull').value=suggestion.leakFull.toFixed(4);
+  if(suggestion.mode==='constant')$('vTarget').value=suggestion.velocity.toFixed(3);
+  else $('v1').value=suggestion.velocity.toFixed(3);
+  calculate();
+  const el=$('calibrateResult');
+  if(el)el.innerHTML+='<br><span class="pill ok">已应用到模型</span>';
+}
+
 /* ── Hi-DPI Canvas chart ──
    opt.markers  = [{x, label, color}]  vertical dashed lines with rotated labels
    series[i].peak     = {x, y}         position of peak on this series
@@ -1244,6 +1441,9 @@ function render(data){
 function calculate(){render(buildData());}
 $('calcBtn').addEventListener('click',calculate);
 $('optCoeffBtn').addEventListener('click',optimizeCoefficients);
+$('calibrateBtn').addEventListener('click',runCalibration);
+$('applyCalibrationBtn').addEventListener('click',applyCalibrationSuggestion);
+initPageTabs();
 window.addEventListener('load',calculate);
 window.addEventListener('resize',function(){try{var d=buildData();render(d);}catch(e){}});
 </script>
