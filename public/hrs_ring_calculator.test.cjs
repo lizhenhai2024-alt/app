@@ -34,8 +34,6 @@ if (!html.includes('id="guideFitL"')) {
 
 [
   'data-page-target="parameters"',
-  'data-page-target="results"',
-  'data-page-target="model"',
   'data-page-target="calibration"',
   'data-page-target="tolerance"',
   'data-page-target="docs"',
@@ -45,6 +43,52 @@ if (!html.includes('id="guideFitL"')) {
     throw new Error(`Tabbed multi-page layout is missing: ${tabText}`);
   }
 });
+
+if (html.includes('data-page-target="model"') || html.includes('data-page="model"')) {
+  throw new Error('Model calibration must be merged into the calibration page');
+}
+
+if (html.includes('data-page-target="results"') || html.includes('data-page="results"')) {
+  throw new Error('Curve results must be merged into the structure parameters page');
+}
+
+[
+  '结构参数与曲线结果',
+  '<div class="charts" data-page="parameters">',
+  '<div class="card" data-page="parameters">',
+  '关键结果'
+].forEach((combinedPageText) => {
+  if (!html.includes(combinedPageText)) {
+    throw new Error(`Structure/results combined page is missing: ${combinedPageText}`);
+  }
+});
+
+[
+  'FEA标定内容',
+  '实测标定内容',
+  '建议测试波形与速度点',
+  '恒速 0.10 / 0.30 / 0.524 / 0.80 / 1.00 m/s',
+  'Sin 峰值 0.30 / 0.60 / 1.00 m/s',
+  'calibration-workspace',
+  '标定输入',
+  'FEA输入',
+  'FEA计算输出',
+  'FEA 输出',
+  '实验测量',
+  '标定参数',
+  '实测得到什么',
+  '用来标定什么',
+  '实测项目',
+  'calibration-side'
+].forEach((calibrationText) => {
+  if (!html.includes(calibrationText)) {
+    throw new Error(`Calibration page is missing required content: ${calibrationText}`);
+  }
+});
+
+if ((html.match(/data-page="calibration"/g) || []).length < 3) {
+  throw new Error('Calibration page should use both left and right panels, not a single narrow stack');
+}
 
 function parseInputs(overrides = {}) {
   const inputs = {};
@@ -118,7 +162,7 @@ function contextWith(overrides) {
 
   vm.createContext(context);
   vm.runInContext(
-    `${scriptMatch[1]}\nglobalThis.__buildData = buildData; globalThis.__runCalibration = runCalibration;`,
+    `${scriptMatch[1]}\nglobalThis.__buildData = buildData; globalThis.__runCalibration = runCalibration; globalThis.__analyzeTubeLengthSensitivity = analyzeTubeLengthSensitivity;`,
     context
   );
   return { context, elements };
@@ -215,6 +259,38 @@ if (!(transientData.target.s < transientEnd.s - 1)) {
 }
 if (!(transientData.target.force > transientEnd.force * 1.1)) {
   throw new Error(`constant-speed transient peak should fall by end, peak=${transientData.target.force}, end=${transientEnd.force}`);
+}
+
+[
+  '参数敏感性分析',
+  '套筒长度 +5 / +10 / +15 mm'
+].forEach((sensitivityText) => {
+  if (!html.includes(sensitivityText)) {
+    throw new Error(`Tolerance page is missing sensitivity content: ${sensitivityText}`);
+  }
+});
+
+const sensitivityRows = contextWith({}).context.__analyzeTubeLengthSensitivity(buildDataWith({}));
+if (sensitivityRows.length !== 4) {
+  throw new Error(`Tube length sensitivity should include base plus 3 variants, got ${sensitivityRows.length}`);
+}
+const sensitivityByDelta = Object.fromEntries(sensitivityRows.map((row) => [row.delta, row]));
+[
+  [0, 60],
+  [5, 55],
+  [10, 50],
+  [15, 45]
+].forEach(([delta, sOn]) => {
+  if (!sensitivityByDelta[delta]) {
+    throw new Error(`Tube length sensitivity is missing +${delta} mm row`);
+  }
+  assertEqual(sensitivityByDelta[delta].sOn, sOn, `tubeL +${delta} mm sensitivity s_on`);
+});
+if (!(sensitivityByDelta[10].peak.s < sensitivityByDelta[0].peak.s)) {
+  throw new Error('Tube length sensitivity should move the peak position earlier for +10 mm');
+}
+if (!(sensitivityByDelta[10].compareForce < sensitivityByDelta[0].compareForce)) {
+  throw new Error('Tube length sensitivity should show lower force at the base peak displacement after +10 mm');
 }
 
 console.log('hrs_ring_calculator geometry tests passed');

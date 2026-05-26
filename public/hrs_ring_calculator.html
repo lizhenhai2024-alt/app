@@ -85,6 +85,13 @@
     .audit-actions{margin-top:6px;padding-left:16px}
     .audit-actions li{margin:2px 0}
     .mini-table{width:100%;font-size:10.5px;margin-top:6px;border:1px solid #e5eaf3;border-radius:6px;overflow:hidden}
+
+    .calibration-workspace{display:grid;grid-template-columns:1.05fr .95fr;gap:10px;align-items:start}
+    .calibration-block{border:1px solid #e5eaf3;border-radius:8px;background:#fbfcff;padding:9px 10px}
+    .calibration-block .section-sub{margin-top:0}
+    .calibration-list{padding-left:16px;color:#475467;font-size:11.5px;line-height:1.6}
+    .calibration-list li{margin:2px 0}
+    .calibration-side{display:grid;gap:10px}
     .mini-table th,.mini-table td{padding:4px 5px}
 
     details summary{cursor:pointer;font-weight:700;color:#344054;padding:2px 0;list-style:none}
@@ -97,7 +104,9 @@
     .page-tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
     .page-hidden{display:none!important}
 
-    @media(max-width:1100px){.layout{grid-template-columns:1fr}.charts{grid-template-columns:1fr}}
+    @media(max-width:1100px){.layout{grid-template-columns:1fr}.charts{grid-template-columns:1fr}.calibration-workspace{grid-template-columns:1fr}}
+    body.page-calibration .layout{grid-template-columns:410px 1fr}
+    @media(max-width:820px){body.page-calibration .layout{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -108,10 +117,8 @@
 </header>
 
 <nav class="page-tabs" aria-label="页面导航">
-  <button class="page-tab active" type="button" data-page-target="parameters">结构参数</button>
-  <button class="page-tab" type="button" data-page-target="results">曲线结果</button>
-  <button class="page-tab" type="button" data-page-target="model">模型标定</button>
-  <button class="page-tab" type="button" data-page-target="calibration">实测标定</button>
+  <button class="page-tab active" type="button" data-page-target="parameters">结构参数与曲线结果</button>
+  <button class="page-tab" type="button" data-page-target="calibration">标定</button>
   <button class="page-tab" type="button" data-page-target="tolerance">公差校核</button>
   <button class="page-tab" type="button" data-page-target="docs">计算说明</button>
 </nav>
@@ -229,6 +236,8 @@
           <summary>5. 尺寸和形位公差校核</summary>
           <div class="detail-body">
             <div class="row"><label>性能目标公差 / %</label><input class="user" id="perfTolPct" type="number" value="10" step="1"></div>
+            <div class="section-sub">参数敏感性分析</div>
+            <p class="note">套筒长度 +5 / +10 / +15 mm：在公差校核输出中单独对比 L<sub>tube</sub> 变化对 s<sub>on</sub>、峰值位置和 HRS 峰值力的影响。</p>
             <div class="row range"><label>活塞杆直径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devRodDLow" type="number" value="-0.02" step="0.005"><input class="user" id="devRodDHigh" type="number" value="0.00" step="0.005"></div></div>
             <div class="row range"><label>套筒内径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devTubeIDLow" type="number" value="0.09" step="0.01"><input class="user" id="devTubeIDHigh" type="number" value="0.13" step="0.01"></div></div>
             <div class="row range"><label>入口内径偏差 下/上 / mm</label><div class="range-cell"><input class="user" id="devEntryIDLow" type="number" value="-0.10" step="0.01"><input class="user" id="devEntryIDHigh" type="number" value="0.00" step="0.01"></div></div>
@@ -248,28 +257,18 @@
       </div>
 
       <!-- 6. 标定参数 -->
-      <div class="card" data-page="model">
+      <div class="card" data-page="calibration">
         <details open>
-          <summary>6. 模型标定参数</summary>
+          <summary>6. 标定输入：模型参数</summary>
           <div class="detail-body">
+            <div class="section-sub">模型参数</div>
         <div class="row"><label>开口环柔度系数 K<sub>open</sub></label><input class="adv" id="kopen" type="number" value="0.10" step="0.01"></div>
         <div class="row"><label>进入瞬态峰值系数 K<sub>trans</sub></label><input class="adv" id="transientGain" type="number" value="8" step="0.5"></div>
         <div class="row"><label>瞬态衰减长度 L<sub>trans</sub> / mm</label><input class="adv" id="transientDecay" type="number" value="12" step="0.5"></div>
             <div class="row"><label>Ring 撑开阈值压力 p<sub>close</sub> / MPa</label><input class="auto" id="pCloseDisp" type="number" readonly></div>
             <div class="row"><label>目标峰值撑开压比 ΔP·seal/p<sub>close</sub></label><input class="auto" id="targetOpenRatio" type="number" readonly></div>
             <div class="row"><label>目标峰值残余径向间隙 c<sub>eff</sub> / mm</label><input class="auto" id="targetRadialGap" type="number" readonly></div>
-            <p class="note" style="margin-top:7px">
-              p<sub>close</sub> = K<sub>open</sub>·E·t<sub>rad</sub>·c/r²·(t<sub>rad</sub>/t<sub>ref</sub>)²。径向厚度按开口环截面弯曲刚度近似形成 t³ 影响；厚度越大，低压力越不容易撑开并关闭径向间隙。H<sub>ring</sub> 不直接线性乘入 p<sub>close</sub>，但会通过 sealRatio=(x/H<sub>ring</sub>)^1.35 和 A<sub>gap</sub>=k<sub>gap</sub>·H<sub>ring</sub>·g·sealRatio 影响起压速度和端隙泄流。图示 Ring 开口为斜切/圆角/局部遮挡，不是垂直贯通矩形缝，因此 k<sub>gap</sub> 应理解为投影到最窄通道后的等效面积系数，不能直接取全开 1.0。低压段用 ΔP·sealRatio/p<sub>close</sub> 判断 Ring 能否撑开；撑不开时保留残余径向间隙 c<sub>eff</sub>=c·(1−expandRatio)，并按该间隙计算未贴壁泄漏。K<sub>open</sub> 越小，Ring 越容易在低速胀开。<br><br>
-              <b>尺寸敏感度：</b> t<sub>rad</sub> 主要改变 p<sub>close</sub>（约 t³），H<sub>ring</sub> 主要改变端隙泄流面积和密封建立长度；随后再看 k<sub>gap</sub> / g<sub>0</sub> / k<sub>leak</sub> → leakFull → K<sub>open</sub> → k<sub>expand</sub>。<br>
-              <b>标定顺序：</b>
-              ① 用恒速示功图实测 HRS 峰值力反推总等效泄流面积 A<sub>total</sub>；
-              ② 实测 Ring 自由端隙 g<sub>0</sub> 代入；
-              ③ 用低速（0.1～0.3 m/s）与高速（0.8～1.0 m/s）曲线对比，依次标定 k<sub>leak</sub>、k<sub>gap</sub>、leakFull；
-              ④ 用浮动环 FEA 得到 p<sub>close</sub>、expandRatio(ΔP)、接触/贴壁状态、开口闭合状态和环向应力，并反算 K<sub>open</sub>、k<sub>expand</sub>；
-              ⑤ 最后用 1.5mm 与 2.0mm 壁厚起效速度差，对比实测示功图和 FEA 起效压力，反标定 K<sub>open</sub>。<br>
-              <b>示功图 + FEA 结合：</b> 示功图用于反推 A<sub>total</sub> 和各速度下的等效泄流；FEA 用于约束 Ring 撑开、贴壁、开口是否闭合，避免 k<sub>leak</sub>、k<sub>gap</sub>、leakFull、K<sub>open</sub> 相互补偿出不合理参数。<br>
-              <b style="color:#b91c1c">注意：所有紫色参数均为需实测标定的拟合系数，初始值为几何估算值，不代表实际力值。</b>
-            </p>
+            <p class="note" style="margin-top:7px">紫色参数为模型拟合量，初值只作为几何估算；先用 FEA 限定物理范围，再用实测曲线反算数值，避免多个系数互相补偿。</p>
             <div class="section-sub">优化约束范围（min / max）</div>
             <div class="row range"><label>k<sub>gap</sub> 范围</label><div class="range-cell"><input class="user" id="optRingGapKMin" type="number" value="0.30" step="0.01"><input class="user" id="optRingGapKMax" type="number" value="0.80" step="0.01"></div></div>
             <div class="row range"><label>k<sub>expand</sub> 范围</label><div class="range-cell"><input class="user" id="optRingGapExpandKMin" type="number" value="0.40" step="0.01"><input class="user" id="optRingGapExpandKMax" type="number" value="0.80" step="0.01"></div></div>
@@ -285,8 +284,9 @@
       <!-- 7. 标定参数计算 -->
       <div class="card" data-page="calibration">
         <details open>
-          <summary>7. 标定参数计算</summary>
+          <summary>7. 标定输入：实测反算</summary>
           <div class="detail-body">
+            <div class="section-sub">实测反算输入</div>
             <p class="note">
               标定前必须先选清楚工况类型：<b>恒速</b>表示整段行程速度固定，输入速度就是全行程恒定速度；<b>Sin</b>表示位移和速度按正弦规律变化，输入速度是峰值速度。两种曲线不能混用，否则反算出的 K<sub>trans</sub>、L<sub>trans</sub> 和 leakFull 会偏离。
             </p>
@@ -334,7 +334,7 @@
     <!-- ══ RIGHT PANEL ══ -->
     <section>
 
-      <div class="charts" data-page="results">
+      <div class="charts" data-page="parameters">
         <div class="chart-wrap">
           <div class="card-title">F-S 曲线：HRS附加力 vs 复原拉伸位移（Sin对比）</div>
           <canvas id="fsChart"></canvas>
@@ -353,13 +353,65 @@
         </div>
       </div>
 
-      <div class="card" data-page="results">
+      <div class="card" data-page="parameters">
         <div class="card-title">关键结果</div>
         <div id="passLine" style="margin-bottom:10px"></div>
         <div id="requirementAudit"></div>
         <div id="summaryKvs" class="summary-grid"></div>
         <div class="tbl-wrap" style="margin-top:10px">
           <div id="resultTable"></div>
+        </div>
+      </div>
+
+      <div class="card calibration-workspace" data-page="calibration">
+        <div>
+          <div class="card-title">标定过程</div>
+          <div class="calibration-block">
+            <div class="section-sub">标定顺序</div>
+            <ol class="calibration-list">
+              <li>FEA：输入几何、材料、径向间隙、端隙和压差扫掠，计算 Ring 是否撑开、贴壁、闭口和应力。</li>
+              <li>实测：按恒速和 Sin 速度点测完整示功图，记录高点、末端和曲线回落。</li>
+              <li>模型：用 FEA 约束刚度/贴壁类参数，用实测反算泄流/瞬态类参数。</li>
+            </ol>
+          </div>
+          <div class="calibration-block" style="margin-top:10px">
+            <div class="section-sub">FEA标定内容</div>
+            <table class="mini-table">
+              <thead><tr><th>FEA输入</th><th>FEA计算输出（FEA 输出）</th><th>标定参数</th></tr></thead>
+              <tbody>
+                <tr><td>Ring 几何：D<sub>o</sub>、D<sub>i</sub>、H、t<sub>rad</sub>、g<sub>0</sub>、倒角/开口形状</td><td>p<sub>close</sub>：开始撑开/贴壁的压差</td><td>K<sub>open</sub></td></tr>
+                <tr><td>套筒内径、径向间隙 c、接触摩擦、材料 E/ν</td><td>expandRatio(ΔP) 曲线和贴壁比例</td><td>k<sub>expand</sub>、径向泄漏关闭规律</td></tr>
+                <tr><td>开口端部形状、端隙 g<sub>0</sub>、压差扫掠</td><td>开口是否闭合、有效端隙通流比例</td><td>k<sub>gap</sub> 的物理范围</td></tr>
+                <tr><td>最高工作压差 p<sub>max</sub>、材料屈服强度</td><td>环向应力和安全系数</td><td>强度校核，不直接拟合力值</td></tr>
+              </tbody>
+            </table>
+            <p class="note" style="margin-top:7px">FEA 不是直接拟合示功图力值，而是先给模型参数设物理边界：Ring 什么时候撑开、贴壁后端隙是否关闭、应力是否允许。</p>
+          </div>
+        </div>
+        <div class="calibration-side">
+          <div class="calibration-block">
+            <div class="section-sub">实测标定内容</div>
+            <p class="note">实验的任务是测量真实 F-S 曲线，再反推泄流和瞬态参数。恒速与 Sin 的速度定义不同，录入标定数据时必须选择对应模式。</p>
+          </div>
+          <div class="calibration-block">
+            <div class="section-sub">建议测试波形与速度点</div>
+            <table class="mini-table">
+              <thead><tr><th>实验测量/实测项目</th><th>速度点</th><th>实测得到什么</th><th>用来标定什么</th></tr></thead>
+              <tbody>
+                <tr><td>恒速示功图</td><td>恒速 0.10 / 0.30 / 0.524 / 0.80 / 1.00 m/s</td><td>F<sub>peak</sub>、s<sub>peak</sub>、F<sub>end</sub>、进入后衰减斜率</td><td>k<sub>leak</sub>、leakFull、K<sub>trans</sub>、L<sub>trans</sub></td></tr>
+                <tr><td>Sin 示功图</td><td>Sin 峰值 0.30 / 0.60 / 1.00 m/s</td><td>峰值位置、速度变化下的回落形状、整段曲线趋势</td><td>校验 K<sub>trans</sub>/L<sub>trans</sub>，修正泄流参数是否过拟合恒速</td></tr>
+                <tr><td>Ring 自由状态</td><td>装配前测量</td><td>自由端隙 g<sub>0</sub>、开口形状、外径/高度实测值</td><td>g<sub>0</sub> 输入、k<sub>gap</sub> 初始范围</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="calibration-block">
+            <div class="section-sub">需要录入的数据</div>
+            <ul class="calibration-list">
+              <li>进入高点位移 s<sub>peak</sub> 与进入高点力 F<sub>peak</sub></li>
+              <li>末端位移 s<sub>end</sub> 与末端力 F<sub>end</sub></li>
+              <li>测试波形类型：恒速按全行程恒定速度，Sin 按峰值速度</li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -376,10 +428,15 @@ function num(id){const e=$(id);const v=e?Number(e.value):0;return Number.isFinit
 function val(id){const e=$(id);return e?e.value:''}
 function setv(id,v,d){const e=$(id);if(e)e.value=Number.isFinite(v)?v.toFixed(d):''}
 function fmt(v,d){return Number.isFinite(v)?Number(v).toFixed(d):'-'}
+function signedFmt(v,d){return Number.isFinite(v)?(v>=0?'+':'')+Number(v).toFixed(d):'-'}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function showPage(page){
   if(!document.querySelectorAll)return;
   const active=page||'parameters';
+  if(document.body){
+    document.body.className=document.body.className.replace(/\bpage-\S+/g,'').trim();
+    document.body.classList.add('page-'+active);
+  }
   document.querySelectorAll('[data-page]').forEach(function(el){
     const scope=el.getAttribute('data-page');
     el.classList.toggle('page-hidden', scope!=='common'&&scope!==active);
@@ -1266,6 +1323,55 @@ function analyzeTolerance(data){
   };
 }
 
+function analyzeTubeLengthSensitivity(data){
+  const p=data.p;
+  const baseSeries=buildConstantSpeedSeries(p.vTarget, p, 'sensitivity');
+  const basePeak=baseSeries.peak;
+  return [0,5,10,15].map(function(delta){
+    const cand=Object.assign({}, p);
+    cand.tubeL=p.tubeL+delta;
+    recalcParams(cand, 0);
+    const series=delta===0?baseSeries:buildConstantSpeedSeries(cand.vTarget, cand, 'sensitivity');
+    const peak=series.peak;
+    const comparePoint=series.points.reduce(function(best, point){
+      return Math.abs(point.s-basePeak.s)<Math.abs(best.s-basePeak.s)?point:best;
+    }, series.points[0]);
+    const forceDelta=peak.force-basePeak.force;
+    const forceDeltaPct=basePeak.force>0?forceDelta/basePeak.force*100:0;
+    const compareForceDelta=comparePoint.force-basePeak.force;
+    const compareForceDeltaPct=basePeak.force>0?compareForceDelta/basePeak.force*100:0;
+    return {
+      delta,
+      tubeL:cand.tubeL,
+      entryToGuide:cand.entryToGuide,
+      sOn:cand.sOn,
+      compareS:basePeak.s,
+      compareForce:comparePoint.force,
+      compareForceDelta,
+      compareForceDeltaPct,
+      peak,
+      forceDelta,
+      forceDeltaPct
+    };
+  });
+}
+
+function renderSensitivityRows(rows){
+  return rows.map(function(row){
+    const label=row.delta===0?'基准':'L_tube +'+fmt(row.delta,0)+' mm';
+    const forceText=fmt(row.peak.force,0)+' N'+(row.delta===0?'':'（'+signedFmt(row.forceDelta,0)+' N / '+signedFmt(row.forceDeltaPct,1)+'%）');
+    const compareText=fmt(row.compareForce,0)+' N'+(row.delta===0?'':'（'+signedFmt(row.compareForceDelta,0)+' N / '+signedFmt(row.compareForceDeltaPct,1)+'%）');
+    return '<tr>'+
+      '<td>'+label+'</td>'+
+      '<td>'+fmt(row.tubeL,1)+' mm</td>'+
+      '<td>'+fmt(row.sOn,1)+' mm</td>'+
+      '<td>'+fmt(row.peak.s,1)+' mm</td>'+
+      '<td>'+forceText+'</td>'+
+      '<td>'+compareText+'</td>'+
+      '</tr>';
+  }).join('');
+}
+
 function renderRequirementAudit(data){
   const el=$('requirementAudit');
   if(!el)return;
@@ -1281,6 +1387,7 @@ function renderRequirementAudit(data){
   const totalNominal=p.baseDamping+r.force;
   const totalMin=p.baseDamping+tol.minCase.peak.force;
   const totalMax=p.baseDamping+tol.maxCase.peak.force;
+  const sensitivityRows=analyzeTubeLengthSensitivity(data);
 
   el.innerHTML=
     '<div class="audit">'+
@@ -1293,6 +1400,9 @@ function renderRequirementAudit(data){
     '<tr><td>生产公差性能波动</td><td>'+fmt(tol.maxDevPct,1)+'%</td><td>±'+fmt(p.perfTolPct,0)+'%</td><td><span class="pill '+tolCls+'">'+(tol.pass?'满足':'超差')+'</span></td></tr>'+
     '</tbody></table>'+
     '<div class="audit-text" style="margin-top:7px">公差扫描 '+tol.count+' 组最坏组合：HRS附加力最小 '+fmt(tol.minCase.peak.force,0)+' N，最大 '+fmt(tol.maxCase.peak.force,0)+' N；对应总力范围 '+fmt(totalMin,0)+'–'+fmt(totalMax,0)+' N。±'+fmt(p.perfTolPct,0)+'% 名义窗口为 '+fmt(tol.lower,0)+'–'+fmt(tol.upper,0)+' N。</div>'+
+    '<div class="audit-title" style="margin-top:10px">参数敏感性分析</div>'+
+    '<div class="audit-text">只改变套筒总长度 L<sub>tube</sub>，其他参数保持当前输入值；套筒加长会使入口位置提前，表中对比套筒长度 +5 / +10 / +15 mm 后的 s<sub>on</sub>、峰值位置、峰值力和基准峰值位移处的力变化。</div>'+
+    '<table class="mini-table"><thead><tr><th>变化</th><th>L<sub>tube</sub></th><th>s<sub>on</sub></th><th>峰值位移</th><th>HRS峰值力</th><th>基准峰位处力</th></tr></thead><tbody>'+renderSensitivityRows(sensitivityRows)+'</tbody></table>'+
     '<div class="audit-text" style="margin-top:6px">图中只保留一个目标：HRS附加力目标水平线；目标恒速曲线按恒定速度计算，Sin曲线速度随位移变化，仅用于对比。</div>'+
     '</div>';
 }
